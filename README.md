@@ -1,42 +1,50 @@
-# serverless-plugin-layer-manager
-
+# serverless-webpack-layers
+<!-- 
 [![NPM version](https://img.shields.io/npm/v/serverless-plugin-layer-manager.svg)](https://www.npmjs.com/package/serverless-plugin-layer-manager)
-[![Build Status](https://travis-ci.com/henhal/serverless-plugin-layer-manager.svg?branch=master)](https://travis-ci.com/henhal/serverless-plugin-layer-manager)
+[![Build Status](https://travis-ci.com/henhal/serverless-plugin-layer-manager.svg?branch=master)](https://travis-ci.com/henhal/serverless-plugin-layer-manager) -->
 
-Plugin for the Serverless framework that offers improved AWS Lambda layer management.
+Plugin for the Serverless framework that offers AWS Lambda layer management alongside Webpack configuration.
 
-The Serverless framework supports AWS Lambda layers, but there are some shortcomings:
+Similar to [serverless-webpack](https://github.com/serverless-heaven/serverless-webpack) which can bundle modules by identifying what is used within your functions, this plugin can identify what modules are used by your functions and spread the node modules out to AWS Lambda Layers to reduce and improve start time and to share dependencies across functions.
 
-* When creating Node.JS layers from local directories you create a directory containing a `nodejs` folder with a `package.json` file in it. However, the Serverless framework will not automatically install the dependencies used by the layer, so it needs to be done manually using e.g. hooks.
+This module works alongside `serverless-webpack` but can work by itself as long as you make sure you are not bundling your `node_modules` into your functions.
 
-* Layers are not exported by default. To export a layer you must declare your XxxLambdaLayer resources under `Output` and add an `Export` property manually
+# Installation:
 
-* If using `retain: true` on your layers, it's not possible to reference them from functions in the same stack, since layer names will be appended with a unique version hash. You either need to stop using `retain` or put your layers in a separate stack and export them using the trick above, and then reference them from your functions in another stack.
+```shell
+npm install --save-dev serverless-webpack-layers
+yarn add --dev serverless-webpack-layers
 
-This plugin fixes all these problems by automatically adding hooks to invoke `npm install` on each declared Node.JS layer, and by transforming the generated CloudFormation template to export the layers and to properly reference the versioned layers from functions.
-
-Installation:
-
-```
-npm install --save-dev serverless-plugin-layer-manager
+sls plugin install -n serverless-webpack-layers
 ```
 
-serverless.yml:
+## `webpack` config:
 
+Make sure to add the [`webpack-node-externals`](https://www.npmjs.com/package/webpack-node-externals) plugin to your webpack config to avoid bundling modules:
+```js
+const nodeExternals = require('webpack-node-externals');
+
+module.exports = {
+  // config here
+  externals: [nodeExternals()],
+};
 ```
-...
+
+## `serverless.yml`:
+
+```yml
 plugins:
-  - serverless-plugin-layer-manager
+  - serverless-webpack-layers
 ```
 
-That's it! You may now reference your layers from functions in the same file like
+Once you've installed the plugin, add layer(s) for each function:
 
-```
+```yml
 layers:
   lib:
     path: lib
-    name: dev-foo-lib
-    description: My library
+    name: node-modules
+    description: My node modules
     retain: true
     
 functions:
@@ -49,15 +57,26 @@ functions:
 
 The `lib` layer will be installed and its `node_modules` packaged into the artifact, and the function will use the layer.
 
-You may customize the features by adding a `layerConfig` object under `custom`, supporting the following properties:
+You also will want to add a `layerConfig` property with the following properties:
 
-```
+```yml
 custom:
   layerConfig:
+    packager: [yarn, npm] # defaults to npm
+    manageNodeFolder: <boolean> # defaults to false, this lets the plugin control the existence of the layer's nodejs folder
+    webpack:
+      clean: true # this will clean and remove files/folders according to package.exclude
+      backupFileType: <string> # defaults to js, is used when plugin cannot determine which file is the function handler
+      configPath: <string> # defaults to ./webpack.config.js, is used to denote the path of your webpack config
+      forceInclude: [<string>] # defaults to [], list of modules to force include
+      forceExclude: [<string>] # defaults to [], list of modules to force exclude
+
     installLayers: <boolean>
     exportLayers: <boolean>
     upgradeLayerReferences: <boolean>
-    exportPrefix: <prefix used for the names of the exported layers>
+    exportPrefix: <prefix used for the names of the exported layers> # defaults to '${AWS:StackName}-'.
 ```
 
-By default, all config options are true and the `exportPrefix` is set to `${AWS:StackName}-`.
+Note:
+
+- You will want to make sure your `webpack.entry` field is empty, not controlled by `serverless-webpack`
