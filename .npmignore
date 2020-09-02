@@ -1,0 +1,8 @@
+/.editorconfig
+/.travis*
+/src/
+/test/
+.nyc_output
+.vscode
+examples
+test
