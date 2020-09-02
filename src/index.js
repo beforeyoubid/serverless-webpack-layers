@@ -114,7 +114,7 @@ class LayerManagerPlugin {
         ? `npm install ${packages.join(' ')}`
         : `yarn add ${packages.join(' ')}`;
     }
-    verbose(this, `Running command ${command}`);
+    info(this, `Running command ${command}`);
     execSync(command, {
       stdio: 'inherit',
       cwd: nodeLayerPath
