@@ -11,7 +11,7 @@ This module works alongside `serverless-webpack` but can work by itself as long 
 
 # Installation:
 
-```shell
+```sh
 npm install --save-dev serverless-webpack-layers
 yarn add --dev serverless-webpack-layers
 
