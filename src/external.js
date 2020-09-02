@@ -78,7 +78,7 @@ async function getExternalModules(sls, layerRefName) {
   try {
     const runPath = process.cwd();
     const { webpack: webpackConfigUnmerged = {} } = sls.service.custom.layerConfig;
-    const webpackConfig = Object.assign({}, webpackConfigUnmerged, defaultWebpackConfig);
+    const webpackConfig = Object.assign({}, defaultWebpackConfig, webpackConfigUnmerged);
     const { configPath = './webpack.config.js', forceInclude = [], forceExclude = [] } = webpackConfig;
     let config = await require(path.join(runPath, configPath));
     if (typeof config === 'function') {
