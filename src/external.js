@@ -58,9 +58,9 @@ function resolvedEntries(sls, layerRefName){
   for (const func of Object.values(sls.service.functions)) {
     const { handler, layers } = func;
     if (!layers.some(layer => layer.Ref === layerRefName)) continue;
-    const match = handler.match(/^(((?:[^\/\n]+\/)+)[^.]+(.jsx?|.tsx?)?)/);
+    const match = handler.match(/^(((?:[^\/\n]+\/)+)?[^.]+(.jsx?|.tsx?)?)/);
     if (!match) continue;
-    const [handlerName, _, folderName] = match;
+    const [handlerName, _, folderName = ''] = match;
     const files = fs.readdirSync(path.resolve(folderName.replace(/\/$/, '')));
     let fileName = handlerName.replace(folderName, '');
     const filteredFiles = files.filter(file => file.startsWith(fileName));
