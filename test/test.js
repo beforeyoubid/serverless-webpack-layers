@@ -5,7 +5,14 @@ const DEFAULT_CONFIG = {
   exportLayers: true,
   exportPrefix: '${AWS::StackName}-',
   installLayers: true,
-  upgradeLayerReferences: true
+  upgradeLayerReferences: true,
+  manageNodeFolder: false,
+  packager: 'npm',
+  webpack: {
+    clean: true,
+    backupFileType: 'js',
+    configPath: './webpack.config.js' 
+  }
 };
 
 function createSls(layerConfig = {}) {
@@ -121,10 +128,10 @@ describe(`Plugin tests`, () => {
   });
 
   it(`should install layers successfully`, async () => {
-    const sls = createSls();
+    const sls = createSls({ manageNodeFolder: true });
     const plugin = createPlugin(sls);
 
-    const {installedLayers} = plugin.installLayers(sls);
+    const {installedLayers} = await plugin.installLayers(sls);
     expect(installedLayers).to.have.lengthOf(2);
   });
 
