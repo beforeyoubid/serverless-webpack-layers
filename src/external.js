@@ -77,9 +77,16 @@ function resolvedEntries(sls, layerRefName){
 async function getExternalModules(sls, layerRefName) {
   try {
     const runPath = process.cwd();
-    const config = await require(path.join(runPath, configPath));
     const { webpack: webpackConfig = defaultWebpackConfig } = sls.service.custom.layerConfig;
     const { configPath = '', forceInclude = [], forceExclude = [] } = webpackConfig;
+    let config = await require(path.join(runPath, configPath));
+    if (typeof config === 'function') {
+      let newConfigValue = config();
+      if (newConfigValue instanceof Promise) {
+        newConfigValue = await newConfigValue;
+      }
+      config = newConfigValue;
+    }
     config.entry = resolvedEntries(sls, layerRefName);
     const stats = await compile(config)
     const packageJson = await require(path.join(runPath, 'package.json'));
