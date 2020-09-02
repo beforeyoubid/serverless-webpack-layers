@@ -7,6 +7,12 @@ global['PACKAGING_LABELS'] = true
 
 const compile = file => new Promise((resolve, reject) => webpack(file).run((err, stats) => err ? reject(err) : resolve(stats)));
 
+const defaultWebpackConfig = {
+  clean: true,
+  backupFileType: 'js',
+  configPath: './webpack.config.js'
+};
+
 function isExternalModule(module) {
   return module.identifier().startsWith('external ') && !isBuiltinModule(getExternalModuleName(module));
 }
@@ -71,9 +77,9 @@ function resolvedEntries(sls, layerRefName){
 async function getExternalModules(sls, layerRefName) {
   try {
     const runPath = process.cwd();
-    const { webpack: webpackConfig } = sls.service.custom.layerConfig;
-    const { configPath = '', entries = [], forceInclude = [], forceExclude = [] } = webpackConfig;
     const config = await require(path.join(runPath, configPath));
+    const { webpack: webpackConfig = defaultWebpackConfig } = sls.service.custom.layerConfig;
+    const { configPath = '', forceInclude = [], forceExclude = [] } = webpackConfig;
     config.entry = resolvedEntries(sls, layerRefName);
     const stats = await compile(config)
     const packageJson = await require(path.join(runPath, 'package.json'));
