@@ -56,7 +56,7 @@ function resolvedEntries(sls, layerRefName){
   const newEntries = {};
   const { backupFileType } = sls.service.custom.layerConfig;
   for (const func of Object.values(sls.service.functions)) {
-    const { handler, layers } = func;
+    const { handler, layers = [] } = func;
     if (!layers.some(layer => layer.Ref === layerRefName)) continue;
     const match = handler.match(/^(((?:[^\/\n]+\/)+)?[^.]+(.jsx?|.tsx?)?)/);
     if (!match) continue;
