@@ -2,6 +2,8 @@ const webpack = require('webpack');
 const path = require('path');
 const fs = require('fs');
 const isBuiltinModule = require('is-builtin-module');
+const glob = require('glob');
+const { resolve } = require('path');
 
 global['PACKAGING_LABELS'] = true
 
@@ -52,12 +54,31 @@ function getExternalModulesFromStats(stats) {
   return Array.from(externals);
 }
 
-function resolvedEntries(sls, layerRefName){
+const globPromise = pattern => new Promise((resolve, reject) => glob(pattern, (err, matches) => err ? reject(err) : resolve(matches)));
+
+async function findEntriesSpecified(specifiedEntries) {
+  let entries = specifiedEntries;
+  if (typeof specifiedEntries === 'string') {
+    entries = [specifiedEntries];
+  }
+  if (!Array.isArray(entries)) {
+    return [];
+  }
+  console.log(entries)
+  const allMapped = await Promise.all(entries.map(globPromise));
+  return allMapped.reduce((arr, list) => arr.concat(list), [])
+}
+
+async function resolvedEntries(sls, layerRefName){
   const newEntries = {};
   const { backupFileType } = sls.service.custom.layerConfig;
   for (const func of Object.values(sls.service.functions)) {
-    const { handler, layers = [] } = func;
+    const { handler, layers = [], entry: specifiedEntries = [] } = func;
     if (!layers.some(layer => layer.Ref === layerRefName)) continue;
+    const matchedSpecifiedEntries = await findEntriesSpecified(specifiedEntries);
+    for (const entry of matchedSpecifiedEntries) {
+      newEntries[entry] = path.resolve(entry);
+    }
     const match = handler.match(/^(((?:[^\/\n]+\/)+)?[^.]+(.jsx?|.tsx?)?)/);
     if (!match) continue;
     const [handlerName, _, folderName = ''] = match;
@@ -88,7 +109,7 @@ async function getExternalModules(sls, layerRefName) {
       }
       config = newConfigValue;
     }
-    config.entry = resolvedEntries(sls, layerRefName);
+    config.entry = await resolvedEntries(sls, layerRefName);
     const stats = await compile(config)
     const packageJson = await require(path.join(runPath, 'package.json'));
     const moduleNames = new Set(getExternalModulesFromStats(stats).map(({ name }) => name));
