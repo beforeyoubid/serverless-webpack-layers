@@ -1,5 +1,5 @@
 const {expect} = require('chai');
-const LayerManagerPlugin = require('../LayerManagerPlugin');
+const LayerManagerPlugin = require('../src');
 
 const DEFAULT_CONFIG = {
   exportLayers: true,
