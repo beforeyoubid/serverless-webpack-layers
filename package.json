@@ -1,6 +1,6 @@
 {
   "name": "serverless-webpack-layers",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Plugin for the Serverless framework that offers AWS Lambda layer management using webpack",
   "scripts": {
     "test": "mocha -R spec --recursive --timeout 10000"
@@ -17,7 +17,7 @@
     "layers",
     "webpack"
   ],
-  "author": "Henrik Hall",
+  "author": "Bailey Sheather",
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/beforeyoubid/serverless-webpack-layers/issues"
