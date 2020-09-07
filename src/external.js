@@ -12,7 +12,8 @@ const compile = file => new Promise((resolve, reject) => webpack(file).run((err,
 const defaultWebpackConfig = {
   clean: true,
   backupFileType: 'js',
-  configPath: './webpack.config.js'
+  configPath: './webpack.config.js',
+  discoverModules: true
 };
 
 function isExternalModule(module) {
@@ -93,13 +94,28 @@ async function resolvedEntries(sls, layerRefName){
   }
   return newEntries;
 }
+function getForceModulesFromFunctions(sls, layerRefName){
+  let forceIncludeAll = [];
+  let forceExcludeAll = [];
+  for (const func of Object.values(sls.service.functions)) {
+    const { layers = [], forceInclude = [], forceExclude = [] } = func;
+    if (!layers.some(layer => layer.Ref === layerRefName)) continue;
+    forceIncludeAll = forceIncludeAll.concat(forceInclude);
+    forceExcludeAll = forceIncludeAll.concat(forceExclude);
+  }
+  return {
+    forceInclude: forceIncludeAll,
+    forceExclude: forceExcludeAll,
+  };
+}
 
 async function getExternalModules(sls, layerRefName) {
   try {
     const runPath = process.cwd();
     const { webpack: webpackConfigUnmerged = {} } = sls.service.custom.layerConfig;
     const webpackConfig = Object.assign({}, defaultWebpackConfig, webpackConfigUnmerged);
-    const { configPath = './webpack.config.js', forceInclude = [], forceExclude = [] } = webpackConfig;
+    const { configPath = './webpack.config.js', discoverModules = true } = webpackConfig;
+    let { forceInclude = [], forceExclude = [] } = webpackConfig;
     let config = await require(path.join(runPath, configPath));
     if (typeof config === 'function') {
       let newConfigValue = config();
@@ -108,12 +124,16 @@ async function getExternalModules(sls, layerRefName) {
       }
       config = newConfigValue;
     }
+    const { forceInclude: forceIncludeFunction = [], forceExclude: forceExcludeFunction = [] } = getForceModulesFromFunctions(sls, layerRefName);
     config.entry = await resolvedEntries(sls, layerRefName);
-    const stats = await compile(config)
     const packageJson = await require(path.join(runPath, 'package.json'));
-    const moduleNames = new Set(getExternalModulesFromStats(stats).map(({ name }) => name));
-    forceInclude.forEach(forceIncludedModule => moduleNames.add(forceIncludedModule));
-    forceExclude.forEach(forceExcludedModule => moduleNames.delete(forceExcludedModule));
+    let moduleNames = [];
+    if (discoverModules) {
+      const stats = await compile(config)
+      moduleNames = new Set(getExternalModulesFromStats(stats).map(({ name }) => name));
+    }
+    forceInclude.concat(forceIncludeFunction).forEach(forceIncludedModule => moduleNames.add(forceIncludedModule));
+    forceExclude.concat(forceExcludeFunction).forEach(forceExcludedModule => moduleNames.delete(forceExcludedModule));
     return Array.from(moduleNames).map(name => packageJson.dependencies[name] ?
       `${name}@${packageJson.dependencies[name]}`
       : name

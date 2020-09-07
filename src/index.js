@@ -19,7 +19,8 @@ const DEFAULT_CONFIG = {
   webpack: {
     clean: true,
     backupFileType: 'js',
-    configPath: './webpack.config.js'
+    configPath: './webpack.config.js',
+    discoverModules: true,
   },
 };
 
