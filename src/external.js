@@ -64,7 +64,6 @@ async function findEntriesSpecified(specifiedEntries) {
   if (!Array.isArray(entries)) {
     return [];
   }
-  console.log(entries)
   const allMapped = await Promise.all(entries.map(globPromise));
   return allMapped.reduce((arr, list) => arr.concat(list), [])
 }

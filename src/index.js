@@ -83,7 +83,7 @@ class LayerManagerPlugin {
     }
 
     if (!fs.existsSync(nodeLayerPath) && this.config.manageNodeFolder) {
-      fs.mkdirSync(nodeLayerPath);
+      fs.mkdirSync(nodeLayerPath, { recursive: true });
     }
     if (!this.config.webpack) {
       fs.copyFileSync(
