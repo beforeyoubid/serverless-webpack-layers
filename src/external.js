@@ -3,7 +3,6 @@ const path = require('path');
 const fs = require('fs');
 const isBuiltinModule = require('is-builtin-module');
 const glob = require('glob');
-const { resolve } = require('path');
 
 global['PACKAGING_LABELS'] = true
 

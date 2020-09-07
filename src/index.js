@@ -31,7 +31,7 @@ const LEVELS = {
 };
 
 function log(...s) {
-  console.log('[layer-manager]', ...s);
+  console.log('[webpack-layers]', ...s);
 }
 
 function verbose({level}, ...s) {
@@ -56,7 +56,7 @@ class LayerManagerPlugin {
   constructor(sls, options = {}) {
     this.level = options.v || options.verbose ? 'verbose' : LOG_LEVEL;
 
-    info(this, `Invoking layer-manager plugin`);
+    info(this, `Invoking webpack-layers plugin`);
 
     this.hooks = {
       'package:initialize': () => {
