@@ -72,7 +72,8 @@ async function resolvedEntries(sls, layerRefName){
   const newEntries = {};
   const { backupFileType } = sls.service.custom.layerConfig;
   for (const func of Object.values(sls.service.functions)) {
-    const { handler, layers = [], entry: specifiedEntries = [] } = func;
+    const { handler, layers = [], entry: specifiedEntries = [], shouldLayer = true } = func;
+    if (!shouldLayer) return false;
     if (!layers.some(layer => layer.Ref === layerRefName)) continue;
     const matchedSpecifiedEntries = await findEntriesSpecified(specifiedEntries);
     for (const entry of matchedSpecifiedEntries) {
@@ -133,8 +134,8 @@ async function getExternalModules(sls, layerRefName) {
     }
     forceInclude.concat(forceIncludeFunction).forEach(forceIncludedModule => moduleNames.add(forceIncludedModule));
     forceExclude.concat(forceExcludeFunction).forEach(forceExcludedModule => moduleNames.delete(forceExcludedModule));
-    return Array.from(moduleNames).map(name => packageJson.dependencies[name] ?
-      `${name}@${packageJson.dependencies[name]}`
+    return Array.from(moduleNames).map(name => packageJson.dependencies[name] || packageJson.devDependencies[name] ?
+      `${name}@${packageJson.dependencies[name] || packageJson.devDependencies[name]}`
       : name
     );
   } catch (err) {

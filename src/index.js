@@ -107,13 +107,17 @@ class LayerManagerPlugin {
     }
     verbose(this, `Installing nodejs layer ${localPath} with ${this.config.packager}`);
     let command = this.config.packager === 'npm'
-      ? 'npm install'
-      : 'yarn install';
+      ? 'NODE_ENV=production npm install'
+      : 'NODE_ENV=production yarn install';
     if (this.config.webpack) {
       const packages = await getExternalModules(sls, layerRefName);
-      command = this.config.packager === 'npm'
-        ? `npm install ${packages.join(' ')}`
-        : `yarn add ${packages.join(' ')}`;
+      if (packages.length !== 0) {
+        command = this.config.packager === 'npm'
+          ? `NODE_ENV=production npm install ${packages.join(' ')}`
+          : `NODE_ENV=production yarn add ${packages.join(' ')}`;
+      } else {
+        command = 'ls'
+      }
     }
     info(this, `Running command ${command}`);
     execSync(command, {
@@ -135,9 +139,8 @@ class LayerManagerPlugin {
     const installedLayers = Object.entries(layers)
       .filter(([layerName, layer]) => this.installLayer(sls, layer, layerName));
 
-    info(this, `Installed ${installedLayers.length} layers`);
-
     await Promise.all(installedLayers.map(layer => this.delete(sls, layer.path)));
+    info(this, `Installed ${installedLayers.length} layers`);
     return {installedLayers};
   }
 
