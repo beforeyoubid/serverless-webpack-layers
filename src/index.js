@@ -27,7 +27,8 @@ const DEFAULT_CONFIG = {
 const LEVELS = {
   none: 0,
   info: 1,
-  verbose: 2
+  verbose: 2,
+  debug: 3,
 };
 
 function log(...s) {
@@ -40,6 +41,11 @@ function verbose({level}, ...s) {
 
 function info({level}, ...s) {
   LEVELS[level] >= LEVELS.info && log(...s);
+}
+
+
+function debug({level}, ...s) {
+  LEVELS[level] >= LEVELS.debug && log(...s);
 }
 
 function getLayers(serverless) {
@@ -56,13 +62,11 @@ class LayerManagerPlugin {
   constructor(sls, options = {}) {
     this.level = options.v || options.verbose ? 'verbose' : LOG_LEVEL;
 
-    info(this, `Invoking webpack-layers plugin`);
+    debug(this, `Invoking webpack-layers plugin`);
+    this.init(sls);
 
     this.hooks = {
-      'package:initialize': () => {
-        this.init(sls);
-        return this.installLayers(sls)
-      },
+      'package:initialize': () => this.installLayers(sls),
       'before:deploy:deploy': () => this.transformLayerResources(sls),
     };
   }
@@ -155,6 +159,10 @@ class LayerManagerPlugin {
   }
 
   transformLayerResources(sls) {
+    if (!this.config) {
+      log(this, 'Unable to add layers currently as config unavailable');
+      return;
+    }
     const {exportLayers, exportPrefix, upgradeLayerReferences} = this.config;
     const layers = getLayers(sls);
     const {compiledCloudFormationTemplate: cf} = sls.service.provider;
