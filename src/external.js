@@ -12,7 +12,9 @@ const defaultWebpackConfig = {
   clean: true,
   backupFileType: 'js',
   configPath: './webpack.config.js',
-  discoverModules: true
+  discoverModules: true,
+  forceInclude: [],
+  forceExclude: [],
 };
 
 function isExternalModule(module) {
@@ -113,9 +115,16 @@ async function getExternalModules(sls, layerRefName) {
   try {
     const runPath = process.cwd();
     const { webpack: webpackConfigUnmerged = {} } = sls.service.custom.layerConfig;
-    const webpackConfig = Object.assign({}, defaultWebpackConfig, webpackConfigUnmerged);
+    const webpackConfig = merge(defaultWebpackConfig, webpackConfigUnmerged);
+    let forceInclude = [
+      ...defaultWebpackConfig.forceInclude,
+      ...(webpackConfigUnmerged ? webpackConfigUnmerged.forceInclude || {} : {}),
+    ]
+    let forceExclude = [
+      ...defaultWebpackConfig.forceExclude,
+      ...(webpackConfigUnmerged ? webpackConfigUnmerged.forceExclude || {} : {}),
+    ]
     const { configPath = './webpack.config.js', discoverModules = true } = webpackConfig;
-    let { forceInclude = [], forceExclude = [] } = webpackConfig;
     let config = await require(path.join(runPath, configPath));
     if (typeof config === 'function') {
       let newConfigValue = config();

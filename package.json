@@ -1,6 +1,6 @@
 {
   "name": "serverless-webpack-layers",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "Plugin for the Serverless framework that offers AWS Lambda layer management using webpack",
   "scripts": {
     "test": "mocha -R spec --recursive --timeout 10000"
