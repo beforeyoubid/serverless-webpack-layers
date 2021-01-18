@@ -1,4 +1,5 @@
 const webpack = require('webpack');
+const merge = require('lodash.merge');
 const path = require('path');
 const fs = require('fs');
 const isBuiltinModule = require('is-builtin-module');
