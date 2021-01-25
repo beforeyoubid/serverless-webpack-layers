@@ -1,7 +1,6 @@
 # serverless-webpack-layers
-<!-- 
-[![NPM version](https://img.shields.io/npm/v/serverless-plugin-layer-manager.svg)](https://www.npmjs.com/package/serverless-plugin-layer-manager)
-[![Build Status](https://travis-ci.com/henhal/serverless-plugin-layer-manager.svg?branch=master)](https://travis-ci.com/henhal/serverless-plugin-layer-manager) -->
+
+![circleci status](https://circleci.com/gh/beforeyoubid/serverless-webpack-layers.svg?style=shield)
 
 Plugin for the Serverless framework that offers AWS Lambda layer management alongside Webpack configuration.
 
