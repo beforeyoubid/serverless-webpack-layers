@@ -1,4 +1,3 @@
-const { expect } = require('chai');
 const LayerManagerPlugin = require('../src');
 
 const DEFAULT_CONFIG = {
@@ -104,7 +103,7 @@ describe(`Plugin tests`, () => {
   it(`should create plugin with default config successfully`, async () => {
     const plugin = createPlugin(createSls());
 
-    expect(plugin.config).to.eql(DEFAULT_CONFIG);
+    expect(plugin.config).toEqual(DEFAULT_CONFIG);
   });
 
   it(`should create plugin with custom config successfully`, async () => {
@@ -116,16 +115,16 @@ describe(`Plugin tests`, () => {
 
     const plugin = createPlugin(createSls(config));
 
-    expect(plugin.config).to.eql({
+    expect(plugin.config).toEqual({
       ...DEFAULT_CONFIG,
       ...config,
     });
   });
 
   it('should set log level using -v or --verbose flag', () => {
-    expect(createPlugin(createSls()).level).to.not.equal('verbose');
-    expect(createPlugin(createSls(), { v: true }).level).to.equal('verbose');
-    expect(createPlugin(createSls(), { verbose: true }).level).to.equal('verbose');
+    expect(createPlugin(createSls()).level).not.toBe('verbose');
+    expect(createPlugin(createSls(), { v: true }).level).toBe('verbose');
+    expect(createPlugin(createSls(), { verbose: true }).level).toBe('verbose');
   });
 
   it(`should install layers successfully`, async () => {
@@ -133,24 +132,30 @@ describe(`Plugin tests`, () => {
     const plugin = createPlugin(sls);
 
     const { installedLayers } = await plugin.installLayers(sls);
-    expect(installedLayers).to.have.lengthOf(2);
+    expect(installedLayers).toHaveLength(2);
   });
 
   it(`should export layers successfully`, async () => {
-    const sls = createSls({ exportLayers: true, upgradeLayerReferences: false });
+    const sls = createSls({
+      exportLayers: true,
+      upgradeLayerReferences: false,
+    });
     const plugin = createPlugin(sls);
 
     const { exportedLayers, upgradedLayerReferences } = plugin.transformLayerResources(sls);
-    expect(exportedLayers).to.have.lengthOf(2);
-    expect(upgradedLayerReferences).to.have.lengthOf(0);
+    expect(exportedLayers).toHaveLength(2);
+    expect(upgradedLayerReferences).toHaveLength(0);
   });
 
   it(`should upgrade versioned layer references successfully`, async () => {
-    const sls = createSls({ exportLayers: false, upgradeLayerReferences: true });
+    const sls = createSls({
+      exportLayers: false,
+      upgradeLayerReferences: true,
+    });
     const plugin = createPlugin(sls);
 
     const { exportedLayers, upgradedLayerReferences } = plugin.transformLayerResources(sls);
-    expect(exportedLayers).to.have.lengthOf(0);
-    expect(upgradedLayerReferences).to.have.lengthOf(1);
+    expect(exportedLayers).toHaveLength(0);
+    expect(upgradedLayerReferences).toHaveLength(1);
   });
 });

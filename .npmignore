@@ -10,3 +10,4 @@ test
 .prettierrc
 .eslintignore
 .eslintrc
+.circleci
