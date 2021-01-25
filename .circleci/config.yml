@@ -1,0 +1,35 @@
+defaults: &defaults
+  working_directory: ~/app/
+  docker:
+    - image: circleci/node:12
+  resource_class: medium
+
+version: 2.1
+jobs:
+  unit-test:
+    <<: *defaults
+    steps:
+      - checkout
+      - restore_cache:
+          key: node_modules-{{ checksum "yarn.lock" }}
+      - run: NODE_ENV=development yarn
+      - run:
+          nane: Lint
+          command: yarn lint
+      - run:
+          name: Tests
+          command: yarn test:ci --maxWorkers 2 --reporters=jest-junit
+          environment:
+            JEST_JUNIT_OUTPUT_DIR: ./reports/jest/
+      - store_test_results:
+          path: ./reports/jest/
+      - save_cache:
+          key: node_modules-{{ checksum "yarn.lock" }}
+          paths:
+            - ~/app/node_modules/
+
+workflows:
+  version: 2
+  application:
+    jobs:
+      - unit-test
