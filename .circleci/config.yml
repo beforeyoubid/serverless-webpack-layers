@@ -18,7 +18,7 @@ jobs:
           command: yarn lint
       - run:
           name: Tests
-          command: yarn test:ci --maxWorkers 2 --reporters=jest-junit
+          command: yarn test --reporters=jest-junit
           environment:
             JEST_JUNIT_OUTPUT_DIR: ./reports/jest/
       - store_test_results:
