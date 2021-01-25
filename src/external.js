@@ -118,12 +118,12 @@ async function getExternalModules(sls, layerRefName) {
     const { webpack: webpackConfigUnmerged = {} } = sls.service.custom.layerConfig;
     const webpackConfig = merge(defaultWebpackConfig, webpackConfigUnmerged);
     let forceInclude = [
-      ...defaultWebpackConfig.forceInclude,
-      ...(webpackConfigUnmerged ? webpackConfigUnmerged.forceInclude || {} : {}),
+      ...webpackConfig.forceInclude,
+      ...(Array.isArray(webpackConfigUnmerged.forceInclude) ? webpackConfigUnmerged.forceInclude : [])
     ]
     let forceExclude = [
-      ...defaultWebpackConfig.forceExclude,
-      ...(webpackConfigUnmerged ? webpackConfigUnmerged.forceExclude || {} : {}),
+      ...webpackConfig.forceExclude,
+      ...(Array.isArray(webpackConfigUnmerged.forceExclude) ? webpackConfigUnmerged.forceExclude : [])
     ]
     const { configPath = './webpack.config.js', discoverModules = true } = webpackConfig;
     let config = await require(path.join(runPath, configPath));
