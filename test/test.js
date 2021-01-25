@@ -1,4 +1,4 @@
-const {expect} = require('chai');
+const { expect } = require('chai');
 const LayerManagerPlugin = require('../src');
 
 const DEFAULT_CONFIG = {
@@ -12,8 +12,8 @@ const DEFAULT_CONFIG = {
     clean: true,
     backupFileType: 'js',
     configPath: './webpack.config.js',
-    discoverModules: true
-  }
+    discoverModules: true,
+  },
 };
 
 function createSls(layerConfig = {}) {
@@ -21,58 +21,58 @@ function createSls(layerConfig = {}) {
     service: {
       provider: {
         compiledCloudFormationTemplate: {
-          "Resources": {
-            "FooLambdaLayer3ed25b0e140bd1e41c1e324ac4792fd38d3757af": {
-              "Type": "AWS::Lambda::LayerVersion",
-              "Properties": {
-                "LayerName": "Foo",
+          Resources: {
+            FooLambdaLayer3ed25b0e140bd1e41c1e324ac4792fd38d3757af: {
+              Type: 'AWS::Lambda::LayerVersion',
+              Properties: {
+                LayerName: 'Foo',
               },
-              "DeletionPolicy": "Retain"
+              DeletionPolicy: 'Retain',
             },
-            "BarLambdaLayer9d80ae7472d5ab9ca001e6a13cdca0aba66c372f": {
-              "Type": "AWS::Lambda::LayerVersion",
-              "Properties": {
-                "LayerName": "Bar",
+            BarLambdaLayer9d80ae7472d5ab9ca001e6a13cdca0aba66c372f: {
+              Type: 'AWS::Lambda::LayerVersion',
+              Properties: {
+                LayerName: 'Bar',
               },
-              "DeletionPolicy": "Retain"
+              DeletionPolicy: 'Retain',
             },
-            "HelloLambdaFunction": {
-              "Type": "AWS::Lambda::Function",
-              "Properties": {
-                "FunctionName": "hello",
-                "Layers": [
+            HelloLambdaFunction: {
+              Type: 'AWS::Lambda::Function',
+              Properties: {
+                FunctionName: 'hello',
+                Layers: [
                   {
-                    "Ref": "FooLambdaLayer"
-                  }
-                ]
+                    Ref: 'FooLambdaLayer',
+                  },
+                ],
               },
             },
           },
-          "Outputs": {
-            "FooLambdaLayerQualifiedArn": {
-              "Value": {
-                "Ref": "FooLambdaLayer3ed25b0e140bd1e41c1e324ac4792fd38d3757af"
-              }
+          Outputs: {
+            FooLambdaLayerQualifiedArn: {
+              Value: {
+                Ref: 'FooLambdaLayer3ed25b0e140bd1e41c1e324ac4792fd38d3757af',
+              },
             },
-            "BarLambdaLayerQualifiedArn": {
-              "Value": {
-                "Ref": "BarLambdaLayer9d80ae7472d5ab9ca001e6a13cdca0aba66c372f"
-              }
-            }
-          }
-        }
+            BarLambdaLayerQualifiedArn: {
+              Value: {
+                Ref: 'BarLambdaLayer9d80ae7472d5ab9ca001e6a13cdca0aba66c372f',
+              },
+            },
+          },
+        },
       },
       custom: {
-        layerConfig
+        layerConfig,
       },
       functions: {
         hello: {
           layers: [
             {
-              Ref: 'FooLambdaLayer'
-            }
-          ]
-        }
+              Ref: 'FooLambdaLayer',
+            },
+          ],
+        },
       },
       layers: {
         foo: {
@@ -80,9 +80,9 @@ function createSls(layerConfig = {}) {
         },
         bar: {
           path: 'Bar',
-        }
-      }
-    }
+        },
+      },
+    },
   };
 }
 
@@ -124,32 +124,32 @@ describe(`Plugin tests`, () => {
 
   it('should set log level using -v or --verbose flag', () => {
     expect(createPlugin(createSls()).level).to.not.equal('verbose');
-    expect(createPlugin(createSls(), {v: true}).level).to.equal('verbose');
-    expect(createPlugin(createSls(), {verbose: true}).level).to.equal('verbose');
+    expect(createPlugin(createSls(), { v: true }).level).to.equal('verbose');
+    expect(createPlugin(createSls(), { verbose: true }).level).to.equal('verbose');
   });
 
   it(`should install layers successfully`, async () => {
     const sls = createSls({ manageNodeFolder: true });
     const plugin = createPlugin(sls);
 
-    const {installedLayers} = await plugin.installLayers(sls);
+    const { installedLayers } = await plugin.installLayers(sls);
     expect(installedLayers).to.have.lengthOf(2);
   });
 
   it(`should export layers successfully`, async () => {
-    const sls = createSls({exportLayers: true, upgradeLayerReferences: false});
+    const sls = createSls({ exportLayers: true, upgradeLayerReferences: false });
     const plugin = createPlugin(sls);
 
-    const {exportedLayers, upgradedLayerReferences} = plugin.transformLayerResources(sls);
+    const { exportedLayers, upgradedLayerReferences } = plugin.transformLayerResources(sls);
     expect(exportedLayers).to.have.lengthOf(2);
     expect(upgradedLayerReferences).to.have.lengthOf(0);
   });
 
   it(`should upgrade versioned layer references successfully`, async () => {
-    const sls = createSls({exportLayers: false, upgradeLayerReferences: true});
+    const sls = createSls({ exportLayers: false, upgradeLayerReferences: true });
     const plugin = createPlugin(sls);
 
-    const {exportedLayers, upgradedLayerReferences} = plugin.transformLayerResources(sls);
+    const { exportedLayers, upgradedLayerReferences } = plugin.transformLayerResources(sls);
     expect(exportedLayers).to.have.lengthOf(0);
     expect(upgradedLayerReferences).to.have.lengthOf(1);
   });

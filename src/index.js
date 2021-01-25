@@ -1,8 +1,6 @@
-const {
-  LOG_LEVEL = 'info'
-} = process.env;
+const { LOG_LEVEL = 'info' } = process.env;
 
-const {execSync} = require('child_process');
+const { execSync } = require('child_process');
 const pascalcase = require('pascalcase');
 const fs = require('fs');
 const path = require('path');
@@ -35,16 +33,15 @@ function log(...s) {
   console.log('[webpack-layers]', ...s);
 }
 
-function verbose({level}, ...s) {
+function verbose({ level }, ...s) {
   LEVELS[level] >= LEVELS.verbose && log(...s);
 }
 
-function info({level}, ...s) {
+function info({ level }, ...s) {
   LEVELS[level] >= LEVELS.info && log(...s);
 }
 
-
-function debug({level}, ...s) {
+function debug({ level }, ...s) {
   LEVELS[level] >= LEVELS.debug && log(...s);
 }
 
@@ -55,7 +52,7 @@ function getLayers(serverless) {
 function getConfig(serverless) {
   const custom = serverless.service.custom || {};
 
-  return {...DEFAULT_CONFIG, ...custom.layerConfig};
+  return { ...DEFAULT_CONFIG, ...custom.layerConfig };
 }
 
 class LayerManagerPlugin {
@@ -91,48 +88,39 @@ class LayerManagerPlugin {
       fs.mkdirSync(nodeLayerPath, { recursive: true });
     }
     if (!this.config.webpack) {
-      fs.copyFileSync(
-        path.join(process.cwd(), 'package.json'),
-        path.join(nodeLayerPath, 'package.json')
-      );
+      fs.copyFileSync(path.join(process.cwd(), 'package.json'), path.join(nodeLayerPath, 'package.json'));
       if (this.config.packager === 'npm') {
-        fs.copyFileSync(
-          path.join(process.cwd(), 'package-lock.json'),
-          path.join(nodeLayerPath, 'package-lock.json')
-        );
+        fs.copyFileSync(path.join(process.cwd(), 'package-lock.json'), path.join(nodeLayerPath, 'package-lock.json'));
       } else if (this.config.packager === 'yarn') {
-        fs.copyFileSync(
-          path.join(process.cwd(), 'yarn.lock'),
-          path.join(nodeLayerPath, 'yarn.lock')
-        );
+        fs.copyFileSync(path.join(process.cwd(), 'yarn.lock'), path.join(nodeLayerPath, 'yarn.lock'));
       }
     } else if (this.config.manageNodeFolder) {
       fs.writeFileSync(path.join(nodeLayerPath, 'package.json'), '{}');
     }
     verbose(this, `Installing nodejs layer ${localPath} with ${this.config.packager}`);
-    let command = this.config.packager === 'npm'
-      ? 'NODE_ENV=production npm install'
-      : 'NODE_ENV=production yarn install';
+    let command =
+      this.config.packager === 'npm' ? 'NODE_ENV=production npm install' : 'NODE_ENV=production yarn install';
     if (this.config.webpack) {
       const packages = await getExternalModules(sls, layerRefName);
       if (packages.length !== 0) {
-        command = this.config.packager === 'npm'
-          ? `NODE_ENV=production npm install ${packages.join(' ')}`
-          : `NODE_ENV=production yarn add ${packages.join(' ')}`;
+        command =
+          this.config.packager === 'npm'
+            ? `NODE_ENV=production npm install ${packages.join(' ')}`
+            : `NODE_ENV=production yarn add ${packages.join(' ')}`;
       } else {
-        command = 'ls'
+        command = 'ls';
       }
     }
     info(this, `Running command ${command}`);
     execSync(command, {
       stdio: 'inherit',
-      cwd: nodeLayerPath
+      cwd: nodeLayerPath,
     });
     return true;
   }
 
   async installLayers(sls) {
-    const {installLayers} = this.config;
+    const { installLayers } = this.config;
 
     if (!installLayers) {
       verbose(this, `Skipping installation of layers as per config`);
@@ -140,22 +128,23 @@ class LayerManagerPlugin {
     }
 
     const layers = getLayers(sls);
-    const installedLayers = Object.entries(layers)
-      .filter(([layerName, layer]) => this.installLayer(sls, layer, layerName));
+    const installedLayers = Object.entries(layers).filter(([layerName, layer]) =>
+      this.installLayer(sls, layer, layerName)
+    );
 
     await Promise.all(installedLayers.map(layer => this.delete(sls, layer.path)));
     info(this, `Installed ${installedLayers.length} layers`);
-    return {installedLayers};
+    return { installedLayers };
   }
 
   async delete(sls, folder) {
     const { clean } = this.config;
     if (!clean) return;
     const nodeLayerPath = `${folder}/nodejs`;
-    console.log(`Cleaning ${(sls.service.package.exclude || []).map(rule => path.join(nodeLayerPath, rule)).join(', ')}`)
-    await del(
-      (sls.service.package.exclude || []).map(rule => path.join(nodeLayerPath, rule))
+    console.log(
+      `Cleaning ${(sls.service.package.exclude || []).map(rule => path.join(nodeLayerPath, rule)).join(', ')}`
     );
+    await del((sls.service.package.exclude || []).map(rule => path.join(nodeLayerPath, rule)));
   }
 
   transformLayerResources(sls) {
@@ -163,37 +152,37 @@ class LayerManagerPlugin {
       log(this, 'Unable to add layers currently as config unavailable');
       return;
     }
-    const {exportLayers, exportPrefix, upgradeLayerReferences} = this.config;
+    const { exportLayers, exportPrefix, upgradeLayerReferences } = this.config;
     const layers = getLayers(sls);
-    const {compiledCloudFormationTemplate: cf} = sls.service.provider;
+    const { compiledCloudFormationTemplate: cf } = sls.service.provider;
 
-    return Object.keys(layers).reduce((result, id) => {
-      const name = pascalcase(id);
-      const exportName = `${name}LambdaLayerQualifiedArn`;
-      const output = cf.Outputs[exportName];
+    return Object.keys(layers).reduce(
+      (result, id) => {
+        const name = pascalcase(id);
+        const exportName = `${name}LambdaLayerQualifiedArn`;
+        const output = cf.Outputs[exportName];
 
-      if (!output) {
-        return;
-      }
+        if (!output) {
+          return;
+        }
 
-      if (exportLayers) {
-        output.Export = {
-          Name: {
-            'Fn::Sub': exportPrefix + exportName
-          }
-        };
-        result.exportedLayers.push(output);
-      }
+        if (exportLayers) {
+          output.Export = {
+            Name: {
+              'Fn::Sub': exportPrefix + exportName,
+            },
+          };
+          result.exportedLayers.push(output);
+        }
 
-      if (upgradeLayerReferences) {
-        const resourceRef = `${name}LambdaLayer`;
-        const versionedResourceRef = output.Value.Ref;
+        if (upgradeLayerReferences) {
+          const resourceRef = `${name}LambdaLayer`;
+          const versionedResourceRef = output.Value.Ref;
 
-        if (resourceRef !== versionedResourceRef) {
-          info(this, `Replacing references to ${resourceRef} with ${versionedResourceRef}`);
+          if (resourceRef !== versionedResourceRef) {
+            info(this, `Replacing references to ${resourceRef} with ${versionedResourceRef}`);
 
-          Object.entries(cf.Resources)
-            .forEach(([id, {Type: type, Properties: {Layers: layers = []} = {}}]) => {
+            Object.entries(cf.Resources).forEach(([id, { Type: type, Properties: { Layers: layers = [] } = {} }]) => {
               if (type === 'AWS::Lambda::Function') {
                 layers.forEach(layer => {
                   if (layer.Ref === resourceRef) {
@@ -201,19 +190,21 @@ class LayerManagerPlugin {
                     layer.Ref = versionedResourceRef;
                     result.upgradedLayerReferences.push(layer);
                   }
-                })
+                });
               }
             });
+          }
         }
+
+        verbose(this, 'CF after transformation:\n', JSON.stringify(cf, null, 2));
+
+        return result;
+      },
+      {
+        exportedLayers: [],
+        upgradedLayerReferences: [],
       }
-
-      verbose(this, 'CF after transformation:\n', JSON.stringify(cf, null, 2));
-
-      return result;
-    }, {
-      exportedLayers: [],
-      upgradedLayerReferences: []
-    });
+    );
   }
 }
 
