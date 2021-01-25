@@ -6,3 +6,7 @@
 .vscode
 examples
 test
+.prettierignore
+.prettierrc
+.eslintignore
+.eslintrc
