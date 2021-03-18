@@ -20,6 +20,7 @@ const DEFAULT_CONFIG = {
     configPath: './webpack.config.js',
     discoverModules: true,
   },
+  productionMode: true,
 };
 
 const LEVELS = {
@@ -98,15 +99,15 @@ class LayerManagerPlugin {
       fs.writeFileSync(path.join(nodeLayerPath, 'package.json'), '{}');
     }
     verbose(this, `Installing nodejs layer ${localPath} with ${this.config.packager}`);
-    let command =
-      this.config.packager === 'npm' ? 'NODE_ENV=production npm install' : 'NODE_ENV=production yarn install';
+    const productionModeFlag = this.config.productionOnly ? 'NODE_ENV=production ' : '';
+    let command = productionModeFlag + this.config.packager === 'npm' ? 'npm install' : 'yarn install';
     if (this.config.webpack) {
       const packages = await getExternalModules(sls, layerRefName);
       if (packages.length !== 0) {
         command =
           this.config.packager === 'npm'
-            ? `NODE_ENV=production npm install ${packages.join(' ')}`
-            : `NODE_ENV=production yarn add ${packages.join(' ')}`;
+            ? `${productionModeFlag} npm install ${packages.join(' ')}`
+            : `${productionModeFlag} yarn add ${packages.join(' ')}`;
       } else {
         command = 'ls';
       }
@@ -132,7 +133,9 @@ class LayerManagerPlugin {
       this.installLayer(sls, layer, layerName)
     );
 
-    await Promise.all(installedLayers.map(layer => this.delete(sls, layer.path)));
+    await Promise.all(
+      installedLayers.filter(layer => typeof layer === 'object').map(layer => this.delete(sls, layer.path))
+    );
     info(this, `Installed ${installedLayers.length} layers`);
     return { installedLayers };
   }
