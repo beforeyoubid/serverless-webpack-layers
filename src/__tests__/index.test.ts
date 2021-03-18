@@ -1,4 +1,4 @@
-const LayerManagerPlugin = require('../src');
+import LayerManagerPlugin from '..';
 
 const DEFAULT_CONFIG = {
   exportLayers: true,
@@ -13,6 +13,7 @@ const DEFAULT_CONFIG = {
     configPath: './webpack.config.js',
     discoverModules: true,
   },
+  productionMode: true,
 };
 
 function createSls(layerConfig = {}) {
@@ -87,12 +88,12 @@ function createSls(layerConfig = {}) {
 
 class Plugin extends LayerManagerPlugin {
   // Mock the install method
-  installLayer(path) {
+  async installLayer() {
     return true;
   }
 }
 
-function createPlugin(sls, options) {
+function createPlugin(sls, options = {}) {
   const plugin = new Plugin(sls, options);
   plugin.init(sls);
 
@@ -131,7 +132,7 @@ describe(`Plugin tests`, () => {
     const sls = createSls({ manageNodeFolder: true });
     const plugin = createPlugin(sls);
 
-    const { installedLayers } = await plugin.installLayers(sls);
+    const { installedLayers } = await plugin.installLayers(sls as any);
     expect(installedLayers).toHaveLength(2);
   });
 
@@ -142,7 +143,7 @@ describe(`Plugin tests`, () => {
     });
     const plugin = createPlugin(sls);
 
-    const { exportedLayers, upgradedLayerReferences } = plugin.transformLayerResources(sls);
+    const { exportedLayers, upgradedLayerReferences } = await plugin.transformLayerResources(sls as any);
     expect(exportedLayers).toHaveLength(2);
     expect(upgradedLayerReferences).toHaveLength(0);
   });
@@ -154,7 +155,7 @@ describe(`Plugin tests`, () => {
     });
     const plugin = createPlugin(sls);
 
-    const { exportedLayers, upgradedLayerReferences } = plugin.transformLayerResources(sls);
+    const { exportedLayers, upgradedLayerReferences } = await plugin.transformLayerResources(sls as any);
     expect(exportedLayers).toHaveLength(0);
     expect(upgradedLayerReferences).toHaveLength(1);
   });

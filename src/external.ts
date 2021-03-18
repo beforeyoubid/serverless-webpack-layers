@@ -1,14 +1,17 @@
-const webpack = require('webpack');
-const merge = require('lodash.merge');
-const path = require('path');
-const fs = require('fs');
-const isBuiltinModule = require('is-builtin-module');
-const glob = require('glob');
+import webpack from 'webpack';
+import merge from 'lodash.merge';
+import path from 'path';
+import fs from 'fs';
+import isBuiltinModule from 'is-builtin-module';
+import glob from 'glob';
+import Serverless from 'serverless';
+import { Stats } from 'webpack';
+import { isFunctionDefinition } from './types';
 
 global['PACKAGING_LABELS'] = true;
 
-const compile = file =>
-  new Promise((resolve, reject) => webpack(file).run((err, stats) => (err ? reject(err) : resolve(stats))));
+const compile = (file: webpack.Configuration): Promise<Stats> =>
+  new Promise((resolve, reject) => webpack(file).run((err: Error, stats) => (err ? reject(err) : resolve(stats))));
 
 const defaultWebpackConfig = {
   clean: true,
@@ -19,13 +22,19 @@ const defaultWebpackConfig = {
   forceExclude: [],
 };
 
-function isExternalModule(module) {
+function isExternalModule(module: ModuleWithIdentifierAsFunc): boolean {
   return module.identifier().startsWith('external ') && !isBuiltinModule(getExternalModuleName(module));
 }
 
-function getExternalModuleName(module) {
-  const path = /^external "(.*)"$/.exec(module.identifier())[1];
-  const pathComponents = path.split('/');
+type ModuleWithIdentifierAsFunc = Stats.FnModules & { identifier: () => string };
+
+function getExternalModuleName(module: ModuleWithIdentifierAsFunc) {
+  const pathParts = /^external "(.*)"$/.exec(
+    typeof module.identifier === 'function' ? module.identifier() : module.identifier
+  );
+  if (pathParts === null) return;
+  const modulePath = pathParts[0];
+  const pathComponents = modulePath.split('/');
   const main = pathComponents[0];
 
   // this is a package within a namespace
@@ -36,32 +45,30 @@ function getExternalModuleName(module) {
   return main;
 }
 
-function getExternalModulesFromStats(stats) {
+function getExternalModulesFromStats(stats: Stats): string[] {
   if (!stats.compilation.chunks) {
     return [];
   }
-  const externals = new Set();
+  const externals: Set<string> = new Set();
   for (const chunk of stats.compilation.chunks) {
-    if (!chunk.modulesIterable) {
-      continue;
-    }
+    const modules: ModuleWithIdentifierAsFunc[] = chunk.modulesIterable ?? [];
 
     // Explore each module within the chunk (built inputs):
-    for (const module of chunk.modulesIterable) {
+    for (const module of modules) {
       if (isExternalModule(module)) {
-        externals.add({
-          name: getExternalModuleName(module),
-        });
+        const externalModuleName = getExternalModuleName(module);
+        if (externalModuleName === undefined) continue;
+        externals.add(externalModuleName);
       }
     }
   }
   return Array.from(externals);
 }
 
-const globPromise = pattern =>
+const globPromise = (pattern: string): Promise<string[]> =>
   new Promise((resolve, reject) => glob(pattern, (err, matches) => (err ? reject(err) : resolve(matches))));
 
-async function findEntriesSpecified(specifiedEntries) {
+async function findEntriesSpecified(specifiedEntries: string | string[]) {
   let entries = specifiedEntries;
   if (typeof specifiedEntries === 'string') {
     entries = [specifiedEntries];
@@ -73,12 +80,16 @@ async function findEntriesSpecified(specifiedEntries) {
   return allMapped.reduce((arr, list) => arr.concat(list), []);
 }
 
-async function resolvedEntries(sls, layerRefName) {
+async function resolvedEntries(sls: Serverless, layerRefName: string) {
   const newEntries = {};
   const { backupFileType } = sls.service.custom.layerConfig;
   for (const func of Object.values(sls.service.functions)) {
+    if (!isFunctionDefinition(func)) {
+      console.error(`This library doesn't currently support functions with an image`);
+      continue;
+    }
     const { handler, layers = [], entry: specifiedEntries = [], shouldLayer = true } = func;
-    if (!shouldLayer) return false;
+    if (!shouldLayer) continue;
     if (!layers.some(layer => layer.Ref === layerRefName)) continue;
     const matchedSpecifiedEntries = await findEntriesSpecified(specifiedEntries);
     for (const entry of matchedSpecifiedEntries) {
@@ -86,7 +97,7 @@ async function resolvedEntries(sls, layerRefName) {
     }
     const match = handler.match(/^(((?:[^\/\n]+\/)+)?[^.]+(.jsx?|.tsx?)?)/);
     if (!match) continue;
-    const [handlerName, _, folderName = ''] = match;
+    const [handlerName, , folderName = ''] = match;
     const files = fs.readdirSync(path.resolve(folderName.replace(/\/$/, '')));
     let fileName = handlerName.replace(folderName, '');
     const filteredFiles = files.filter(file => file.startsWith(fileName));
@@ -99,10 +110,14 @@ async function resolvedEntries(sls, layerRefName) {
   }
   return newEntries;
 }
-function getForceModulesFromFunctions(sls, layerRefName) {
-  let forceIncludeAll = [];
-  let forceExcludeAll = [];
+function getForceModulesFromFunctions(sls: Serverless, layerRefName: string) {
+  let forceIncludeAll: string[] = [];
+  let forceExcludeAll: string[] = [];
   for (const func of Object.values(sls.service.functions)) {
+    if (!isFunctionDefinition(func)) {
+      console.error(`This library doesn't currently support functions with an image`);
+      continue;
+    }
     const { layers = [], forceInclude = [], forceExclude = [] } = func;
     if (!layers.some(layer => layer.Ref === layerRefName)) continue;
     forceIncludeAll = forceIncludeAll.concat(forceInclude);
@@ -114,21 +129,26 @@ function getForceModulesFromFunctions(sls, layerRefName) {
   };
 }
 
-async function getExternalModules(sls, layerRefName) {
+type WebpackConfigAsObjOrFunc =
+  | webpack.Configuration
+  | (() => webpack.Configuration)
+  | (() => Promise<webpack.Configuration>);
+
+export async function getExternalModules(sls: Serverless, layerRefName: string): Promise<string[]> {
   try {
     const runPath = process.cwd();
     const { webpack: webpackConfigUnmerged = {} } = sls.service.custom.layerConfig;
     const webpackConfig = merge(defaultWebpackConfig, webpackConfigUnmerged);
-    let forceInclude = [
+    const forceInclude = [
       ...webpackConfig.forceInclude,
       ...(Array.isArray(webpackConfigUnmerged.forceInclude) ? webpackConfigUnmerged.forceInclude : []),
     ];
-    let forceExclude = [
+    const forceExclude = [
       ...webpackConfig.forceExclude,
       ...(Array.isArray(webpackConfigUnmerged.forceExclude) ? webpackConfigUnmerged.forceExclude : []),
     ];
     const { configPath = './webpack.config.js', discoverModules = true } = webpackConfig;
-    let config = await require(path.join(runPath, configPath));
+    let config: WebpackConfigAsObjOrFunc = await require(path.join(runPath, configPath));
     if (typeof config === 'function') {
       let newConfigValue = config();
       if (newConfigValue instanceof Promise) {
@@ -142,10 +162,10 @@ async function getExternalModules(sls, layerRefName) {
     } = getForceModulesFromFunctions(sls, layerRefName);
     config.entry = await resolvedEntries(sls, layerRefName);
     const packageJson = await require(path.join(runPath, 'package.json'));
-    let moduleNames = [];
+    let moduleNames: Set<string> = new Set();
     if (discoverModules) {
       const stats = await compile(config);
-      moduleNames = new Set(getExternalModulesFromStats(stats).map(({ name }) => name));
+      moduleNames = new Set(getExternalModulesFromStats(stats));
     }
     forceInclude.concat(forceIncludeFunction).forEach(forceIncludedModule => moduleNames.add(forceIncludedModule));
     forceExclude.concat(forceExcludeFunction).forEach(forceExcludedModule => moduleNames.delete(forceExcludedModule));
@@ -159,7 +179,3 @@ async function getExternalModules(sls, layerRefName) {
     throw err;
   }
 }
-
-module.exports = {
-  getExternalModules,
-};
