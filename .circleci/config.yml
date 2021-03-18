@@ -38,6 +38,34 @@ jobs:
           key: node_modules-{{ checksum "yarn.lock" }}
           paths:
             - ~/app/node_modules/
+  typescript:
+    <<: *defaults
+    steps:
+      - checkout
+      - restore_cache:
+          key: node_modules-{{ checksum "yarn.lock" }}
+      - run: NODE_ENV=development yarn
+      - run:
+          name: Check typescript
+          command: yarn ts
+      - save_cache:
+          key: node_modules-{{ checksum "yarn.lock" }}
+          paths:
+            - ~/app/node_modules/
+  build:
+    <<: *defaults
+    steps:
+      - checkout
+      - restore_cache:
+          key: node_modules-{{ checksum "yarn.lock" }}
+      - run: NODE_ENV=development yarn
+      - run:
+          name: Yarn build
+          command: yarn build
+      - save_cache:
+          key: node_modules-{{ checksum "yarn.lock" }}
+          paths:
+            - ~/app/node_modules/
   publish-dry-run:
     <<: *defaults
     steps:
@@ -59,4 +87,6 @@ workflows:
     jobs:
       - unit-test
       - lint
+      - typescript
       - publish-dry-run
+      - build
