@@ -1,11 +1,14 @@
-const { LOG_LEVEL = 'info' } = process.env;
+import { execSync } from 'child_process';
+import pascalcase from 'pascalcase';
+import fs from 'fs';
+import path from 'path';
+import del from 'del';
+import { getExternalModules } from './external';
+import { Maybe, Layer, FunctionLayerReference, TransformedLayerResources } from './types';
+import Serverless from 'serverless';
+import { CloudFormationResource, Output } from 'serverless/aws';
 
-const { execSync } = require('child_process');
-const pascalcase = require('pascalcase');
-const fs = require('fs');
-const path = require('path');
-const del = require('del');
-const { getExternalModules } = require('./external');
+const { LOG_LEVEL = 'info' } = process.env;
 
 const DEFAULT_CONFIG = {
   installLayers: true,
@@ -30,34 +33,53 @@ const LEVELS = {
   debug: 3,
 };
 
-function log(...s) {
+function log(...s: unknown[]) {
   console.log('[webpack-layers]', ...s);
 }
 
-function verbose({ level }, ...s) {
+function verbose({ level }, ...s: unknown[]) {
   LEVELS[level] >= LEVELS.verbose && log(...s);
 }
 
-function info({ level }, ...s) {
+function info({ level }, ...s: unknown[]) {
   LEVELS[level] >= LEVELS.info && log(...s);
 }
 
-function debug({ level }, ...s) {
+function debug({ level }, ...s: unknown[]) {
   LEVELS[level] >= LEVELS.debug && log(...s);
 }
 
-function getLayers(serverless) {
+function getLayers(serverless: Serverless): { [key: string]: Layer } {
   return serverless.service.layers || {};
 }
 
-function getConfig(serverless) {
+function getConfig(serverless: Serverless) {
   const custom = serverless.service.custom || {};
 
   return { ...DEFAULT_CONFIG, ...custom.layerConfig };
 }
 
-class LayerManagerPlugin {
-  constructor(sls, options = {}) {
+export default class LayerManagerPlugin {
+  level: string;
+  hooks: {
+    [key: string]: () => Promise<unknown>;
+  };
+  config: {
+    installLayers?: boolean;
+    exportLayers?: boolean;
+    upgradeLayerReferences?: boolean;
+    exportPrefix?: string;
+    manageNodeFolder?: boolean;
+    packager?: 'npm' | 'yarn';
+    webpack: Partial<{
+      clean: boolean;
+      backupFileType: 'js' | 'ts' | 'cjs';
+      configPath: string;
+      discoverModules: boolean;
+    }>;
+    productionMode?: boolean;
+  } = { webpack: {} };
+  constructor(sls: Serverless, options: Record<string, unknown> = {}) {
     this.level = options.v || options.verbose ? 'verbose' : LOG_LEVEL;
 
     debug(this, `Invoking webpack-layers plugin`);
@@ -69,12 +91,12 @@ class LayerManagerPlugin {
     };
   }
 
-  init(sls) {
+  init(sls: Serverless): void {
     this.config = getConfig(sls);
     verbose(this, `Config: `, this.config);
   }
 
-  async installLayer(sls, layer, layerName) {
+  async installLayer(sls: Serverless, layer: Layer, layerName: string): Promise<boolean> {
     const { path: localPath } = layer;
     const layerRefName = `${layerName.replace(/^./, x => x.toUpperCase())}LambdaLayer`;
     const nodeLayerPath = `${localPath}/nodejs`;
@@ -99,7 +121,7 @@ class LayerManagerPlugin {
       fs.writeFileSync(path.join(nodeLayerPath, 'package.json'), '{}');
     }
     verbose(this, `Installing nodejs layer ${localPath} with ${this.config.packager}`);
-    const productionModeFlag = this.config.productionOnly ? 'NODE_ENV=production ' : '';
+    const productionModeFlag = this.config.productionMode ? 'NODE_ENV=production ' : '';
     let command = productionModeFlag + this.config.packager === 'npm' ? 'npm install' : 'yarn install';
     if (this.config.webpack) {
       const packages = await getExternalModules(sls, layerRefName);
@@ -120,18 +142,18 @@ class LayerManagerPlugin {
     return true;
   }
 
-  async installLayers(sls) {
+  async installLayers(sls: Serverless): Promise<{ installedLayers: Layer[] }> {
     const { installLayers } = this.config;
 
     if (!installLayers) {
       verbose(this, `Skipping installation of layers as per config`);
-      return;
+      return { installedLayers: [] };
     }
 
     const layers = getLayers(sls);
-    const installedLayers = Object.entries(layers).filter(([layerName, layer]) =>
-      this.installLayer(sls, layer, layerName)
-    );
+    const installedLayers = Object.entries(layers)
+      .filter(([layerName, layer]) => this.installLayer(sls, layer, layerName))
+      .map(([, layer]) => layer);
 
     await Promise.all(
       installedLayers.filter(layer => typeof layer === 'object').map(layer => this.delete(sls, layer.path))
@@ -140,30 +162,40 @@ class LayerManagerPlugin {
     return { installedLayers };
   }
 
-  async delete(sls, folder) {
-    const { clean } = this.config;
+  async delete(sls: Serverless, folder: string): Promise<void> {
+    const { clean } = this.config.webpack;
     if (!clean) return;
     const nodeLayerPath = `${folder}/nodejs`;
-    console.log(
-      `Cleaning ${(sls.service.package.exclude || []).map(rule => path.join(nodeLayerPath, rule)).join(', ')}`
-    );
-    await del((sls.service.package.exclude || []).map(rule => path.join(nodeLayerPath, rule)));
+    const exclude: string[] = sls.service?.package?.exclude || [];
+    console.log(`Cleaning ${exclude.map(rule => path.join(nodeLayerPath, rule)).join(', ')}`);
+    await del(exclude.map(rule => path.join(nodeLayerPath, rule)));
   }
 
-  transformLayerResources(sls) {
+  async transformLayerResources(sls: Serverless): Promise<TransformedLayerResources> {
     if (!this.config) {
       log(this, 'Unable to add layers currently as config unavailable');
-      return;
+      return {
+        exportedLayers: [],
+        upgradedLayerReferences: [],
+      };
     }
     const { exportLayers, exportPrefix, upgradeLayerReferences } = this.config;
     const layers = getLayers(sls);
     const { compiledCloudFormationTemplate: cf } = sls.service.provider;
 
-    return Object.keys(layers).reduce(
-      (result, id) => {
+    const layersKeys = Object.keys(layers);
+
+    const transformedResources = layersKeys.reduce(
+      (result: Maybe<TransformedLayerResources>, id: string) => {
+        if (!result) {
+          result = {
+            exportedLayers: [],
+            upgradedLayerReferences: [],
+          };
+        }
         const name = pascalcase(id);
         const exportName = `${name}LambdaLayerQualifiedArn`;
-        const output = cf.Outputs[exportName];
+        const output: Maybe<Output> = (cf.Outputs ?? {})[exportName];
 
         if (!output) {
           return;
@@ -184,18 +216,22 @@ class LayerManagerPlugin {
 
           if (resourceRef !== versionedResourceRef) {
             info(this, `Replacing references to ${resourceRef} with ${versionedResourceRef}`);
-
-            Object.entries(cf.Resources).forEach(([id, { Type: type, Properties: { Layers: layers = [] } = {} }]) => {
+            const resources = cf.Resources as { [key: string]: CloudFormationResource };
+            for (const resource of Object.entries(resources)) {
+              const [id, { Type: type, Properties = {} }] = resource;
+              const {
+                Layers: layers = [],
+              }: Partial<CloudFormationResource['Properties'] & { Layers: FunctionLayerReference[] }> = Properties;
               if (type === 'AWS::Lambda::Function') {
-                layers.forEach(layer => {
+                for (const layer of layers) {
                   if (layer.Ref === resourceRef) {
                     verbose(this, `${id}: Updating reference to layer version ${versionedResourceRef}`);
                     layer.Ref = versionedResourceRef;
                     result.upgradedLayerReferences.push(layer);
                   }
-                });
+                }
               }
-            });
+            }
           }
         }
 
@@ -208,7 +244,11 @@ class LayerManagerPlugin {
         upgradedLayerReferences: [],
       }
     );
+    return (
+      transformedResources ?? {
+        exportedLayers: [],
+        upgradedLayerReferences: [],
+      }
+    );
   }
 }
-
-module.exports = LayerManagerPlugin;
