@@ -14,9 +14,6 @@ jobs:
           key: node_modules-{{ checksum "yarn.lock" }}
       - run: NODE_ENV=development yarn
       - run:
-          nane: Lint
-          command: yarn lint
-      - run:
           name: Tests
           command: yarn test --reporters=jest-junit
           environment:
@@ -27,9 +24,39 @@ jobs:
           key: node_modules-{{ checksum "yarn.lock" }}
           paths:
             - ~/app/node_modules/
+  lint:
+    <<: *defaults
+    steps:
+      - checkout
+      - restore_cache:
+          key: node_modules-{{ checksum "yarn.lock" }}
+      - run: NODE_ENV=development yarn
+      - run:
+          name: Lint
+          command: yarn lint
+      - save_cache:
+          key: node_modules-{{ checksum "yarn.lock" }}
+          paths:
+            - ~/app/node_modules/
+  publish-dry-run:
+    <<: *defaults
+    steps:
+      - checkout
+      - restore_cache:
+          key: node_modules-{{ checksum "yarn.lock" }}
+      - run: NODE_ENV=development yarn
+      - run:
+          name: Publish dry run
+          command: npm publish --dry-run
+      - save_cache:
+          key: node_modules-{{ checksum "yarn.lock" }}
+          paths:
+            - ~/app/node_modules/
 
 workflows:
   version: 2
   application:
     jobs:
       - unit-test
+      - lint
+      - publish-dry-run
