@@ -42,7 +42,7 @@ function getExternalModuleName(module: ModuleWithIdentifierAsFunc) {
     return `${main}/${pathComponents[1]}`;
   }
 
-  return main;
+  return main.replace(/^external "([^"]+)"$/, (x, y) => y);
 }
 
 function getExternalModulesFromStats(stats: Stats): string[] {
@@ -82,7 +82,8 @@ async function findEntriesSpecified(specifiedEntries: string | string[]) {
 
 async function resolvedEntries(sls: Serverless, layerRefName: string) {
   const newEntries = {};
-  const { backupFileType } = sls.service.custom.layerConfig;
+  const backupFileType =
+    sls.service.custom.layerConfig.backupFileType ?? sls.service.custom.layerConfig.webpack.backupFileType ?? 'default';
   for (const func of Object.values(sls.service.functions)) {
     if (!isFunctionDefinition(func)) {
       console.error(`This library doesn't currently support functions with an image`);
