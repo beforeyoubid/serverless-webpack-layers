@@ -33,7 +33,7 @@ function getExternalModuleName(module: ModuleWithIdentifierAsFunc) {
     typeof module.identifier === 'function' ? module.identifier() : module.identifier
   );
   if (pathParts === null) return;
-  const modulePath = pathParts[0];
+  const modulePath = pathParts[1];
   const pathComponents = modulePath.split('/');
   const main = pathComponents[0];
 
