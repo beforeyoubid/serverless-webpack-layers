@@ -1,10 +1,10 @@
-import webpack from 'webpack';
+import webpack, { ExternalModule } from 'webpack';
 import merge from 'lodash.merge';
 import path from 'path';
 import fs from 'fs';
-import isBuiltinModule from 'is-builtin-module';
 import glob from 'glob';
 import Serverless from 'serverless';
+import isBuiltinModule from 'is-builtin-module';
 import { Stats, Module } from 'webpack';
 import { isFunctionDefinition, Maybe } from './types';
 
@@ -24,12 +24,13 @@ const defaultWebpackConfig = {
   forceExclude: [],
 };
 
-function isExternalModule(module: Module): boolean {
-  return module.identifier().startsWith('external ') && !isBuiltinModule(getExternalModuleName(module));
+function isExternalModule(module: Module): module is ExternalModule {
+  return Object.prototype.hasOwnProperty.call(module, 'externalType');
 }
 
-function getExternalModuleName(module: Module): string {
-  const pathParts = /^external "(.*)"$/.exec(
+function getExternalModuleName(module: ExternalModule): string {
+  const regex = module.externalType ? new RegExp(`^external ${module.externalType} "(.*)"$`) : /^external "(.*)"$/;
+  const pathParts = regex.exec(
     typeof module.identifier === 'function' ? module.identifier() : (module.identifier as unknown as string)
   );
   if (pathParts === null) return '';
@@ -42,7 +43,7 @@ function getExternalModuleName(module: Module): string {
     return `${main}/${pathComponents[1]}`;
   }
 
-  return main.replace(/^external "([^"]+)"$/, (x, y) => y);
+  return main.replace('external', '').replace(module.externalType, '').replace(/"/g, '').trim();
 }
 
 function getExternalModulesFromStats(stats: Maybe<Stats>): string[] {
@@ -51,11 +52,12 @@ function getExternalModulesFromStats(stats: Maybe<Stats>): string[] {
   }
   const externals: Set<string> = new Set();
   for (const chunk of stats.compilation.chunks) {
-    const modules = chunk.modulesIterable ?? [];
+    const modules = stats.compilation.chunkGraph.getChunkModules(chunk);
 
     // Explore each module within the chunk (built inputs):
     for (const module of modules) {
       if (isExternalModule(module)) {
+        if (isBuiltinModule(getExternalModuleName(module))) continue;
         const externalModuleName = getExternalModuleName(module);
         if (externalModuleName === undefined) continue;
         externals.add(externalModuleName);
