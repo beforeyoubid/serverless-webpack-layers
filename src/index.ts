@@ -108,17 +108,20 @@ export default class LayerManagerPlugin {
     }
 
     if (!fs.existsSync(nodeLayerPath) && this.config.manageNodeFolder) {
-      fs.mkdirSync(nodeLayerPath, { recursive: true });
+      await fs.promises.mkdir(nodeLayerPath, { recursive: true });
     }
     if (!this.config.webpack) {
-      fs.copyFileSync(path.join(process.cwd(), 'package.json'), path.join(nodeLayerPath, 'package.json'));
+      await fs.promises.copyFile(path.join(process.cwd(), 'package.json'), path.join(nodeLayerPath, 'package.json'));
       if (this.config.packager === 'npm') {
-        fs.copyFileSync(path.join(process.cwd(), 'package-lock.json'), path.join(nodeLayerPath, 'package-lock.json'));
+        await fs.promises.copyFile(
+          path.join(process.cwd(), 'package-lock.json'),
+          path.join(nodeLayerPath, 'package-lock.json')
+        );
       } else if (this.config.packager === 'yarn') {
-        fs.copyFileSync(path.join(process.cwd(), 'yarn.lock'), path.join(nodeLayerPath, 'yarn.lock'));
+        await fs.promises.copyFile(path.join(process.cwd(), 'yarn.lock'), path.join(nodeLayerPath, 'yarn.lock'));
       }
     } else if (this.config.manageNodeFolder) {
-      fs.writeFileSync(path.join(nodeLayerPath, 'package.json'), '{}');
+      await fs.promises.writeFile(path.join(nodeLayerPath, 'package.json'), '{}');
     }
     verbose(this, `Installing nodejs layer ${localPath} with ${this.config.packager}`);
     const productionModeFlag = this.config.productionMode ? 'NODE_ENV=production ' : '';
@@ -128,8 +131,8 @@ export default class LayerManagerPlugin {
       if (packages.length !== 0) {
         command =
           this.config.packager === 'npm'
-            ? `${productionModeFlag} npm install ${packages.join(' ')}`
-            : `${productionModeFlag} yarn add ${packages.join(' ')}`;
+            ? `${productionModeFlag} npm install ${packages.join(' ').trim()}`
+            : `${productionModeFlag} yarn add ${packages.join(' ').trim()}`;
       } else {
         command = 'ls';
       }
@@ -198,7 +201,7 @@ export default class LayerManagerPlugin {
         const output: Maybe<Output> = (cf.Outputs ?? {})[exportName];
 
         if (!output) {
-          return;
+          return result;
         }
 
         if (exportLayers) {

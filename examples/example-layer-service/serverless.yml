@@ -4,7 +4,7 @@ provider:
   runtime: nodejs12.x
 
 plugins:
-  - serverless-plugin-layer-manager
+  - serverless-webpack-layers
 
 layers:
   myLib:

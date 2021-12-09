@@ -5,13 +5,15 @@ import fs from 'fs';
 import isBuiltinModule from 'is-builtin-module';
 import glob from 'glob';
 import Serverless from 'serverless';
-import { Stats } from 'webpack';
-import { isFunctionDefinition } from './types';
+import { Stats, Module } from 'webpack';
+import { isFunctionDefinition, Maybe } from './types';
 
 global['PACKAGING_LABELS'] = true;
 
-const compile = (file: webpack.Configuration): Promise<Stats> =>
-  new Promise((resolve, reject) => webpack(file).run((err: Error, stats) => (err ? reject(err) : resolve(stats))));
+const compile = (file: webpack.Configuration): Promise<Maybe<Stats>> =>
+  new Promise((resolve, reject) =>
+    webpack(file).run((err?: Error, stats?: Stats) => (err ? reject(err) : resolve(stats)))
+  );
 
 const defaultWebpackConfig = {
   clean: true,
@@ -22,17 +24,15 @@ const defaultWebpackConfig = {
   forceExclude: [],
 };
 
-function isExternalModule(module: ModuleWithIdentifierAsFunc): boolean {
+function isExternalModule(module: Module): boolean {
   return module.identifier().startsWith('external ') && !isBuiltinModule(getExternalModuleName(module));
 }
 
-type ModuleWithIdentifierAsFunc = Stats.FnModules & { identifier: () => string };
-
-function getExternalModuleName(module: ModuleWithIdentifierAsFunc) {
+function getExternalModuleName(module: Module): string {
   const pathParts = /^external "(.*)"$/.exec(
-    typeof module.identifier === 'function' ? module.identifier() : module.identifier
+    typeof module.identifier === 'function' ? module.identifier() : (module.identifier as unknown as string)
   );
-  if (pathParts === null) return;
+  if (pathParts === null) return '';
   const modulePath = pathParts[1];
   const pathComponents = modulePath.split('/');
   const main = pathComponents[0];
@@ -45,13 +45,13 @@ function getExternalModuleName(module: ModuleWithIdentifierAsFunc) {
   return main.replace(/^external "([^"]+)"$/, (x, y) => y);
 }
 
-function getExternalModulesFromStats(stats: Stats): string[] {
-  if (!stats.compilation.chunks) {
+function getExternalModulesFromStats(stats: Maybe<Stats>): string[] {
+  if (!stats || !stats.compilation.chunks) {
     return [];
   }
   const externals: Set<string> = new Set();
   for (const chunk of stats.compilation.chunks) {
-    const modules: ModuleWithIdentifierAsFunc[] = chunk.modulesIterable ?? [];
+    const modules = chunk.modulesIterable ?? [];
 
     // Explore each module within the chunk (built inputs):
     for (const module of modules) {
@@ -99,7 +99,7 @@ async function resolvedEntries(sls: Serverless, layerRefName: string) {
     const match = handler.match(/^(((?:[^\/\n]+\/)+)?[^.]+(.jsx?|.tsx?)?)/);
     if (!match) continue;
     const [handlerName, , folderName = ''] = match;
-    const files = fs.readdirSync(path.resolve(folderName.replace(/\/$/, '')));
+    const files = await fs.promises.readdir(path.resolve(folderName.replace(/\/$/, '')));
     let fileName = handlerName.replace(folderName, '');
     const filteredFiles = files.filter(file => file.startsWith(fileName));
     if (filteredFiles.length > 1) {
@@ -157,10 +157,8 @@ export async function getExternalModules(sls: Serverless, layerRefName: string):
       }
       config = newConfigValue;
     }
-    const {
-      forceInclude: forceIncludeFunction = [],
-      forceExclude: forceExcludeFunction = [],
-    } = getForceModulesFromFunctions(sls, layerRefName);
+    const { forceInclude: forceIncludeFunction = [], forceExclude: forceExcludeFunction = [] } =
+      getForceModulesFromFunctions(sls, layerRefName);
     config.entry = await resolvedEntries(sls, layerRefName);
     const packageJson = await require(path.join(runPath, 'package.json'));
     let moduleNames: Set<string> = new Set();
