@@ -5,7 +5,7 @@ import fs from 'fs';
 import path from 'path';
 import del from 'del';
 import { getExternalModules } from './external';
-import { Maybe, Layer, FunctionLayerReference, TransformedLayerResources } from './types';
+import { Maybe, Layer, FunctionLayerReference, TransformedLayerResources, notEmpty } from './types';
 import Serverless from 'serverless';
 import { CloudFormationResource, Output } from 'serverless/aws';
 
@@ -165,14 +165,18 @@ export default class LayerManagerPlugin {
     }
 
     const layers = getLayers(sls);
-    const installedLayers = Object.entries(layers)
-      .filter(([layerName, layer]) => this.installLayer(sls, layer, layerName))
-      .map(([, layer]) => layer);
-
-    await Promise.all(
-      installedLayers.filter(layer => typeof layer === 'object').map(layer => this.delete(sls, layer.path))
+    const attemptedInstallLayers = await Promise.all(
+      Object.entries(layers).map(async ([layerName, layer]) => {
+        if (typeof layer !== 'object') return;
+        const installed = await this.installLayer(sls, layer, layerName);
+        if (!installed) return;
+        await this.delete(sls, layer.path);
+        return layer;
+      })
     );
-    info(this, `Installed ${installedLayers.length} layers`);
+    const installedLayers = attemptedInstallLayers.filter(notEmpty);
+
+    info(this, `Installed ${installedLayers.length} layer${installedLayers.length > 1 ? 's' : ''}`);
     return { installedLayers };
   }
 
