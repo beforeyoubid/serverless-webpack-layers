@@ -24,6 +24,7 @@ const { LOG_LEVEL = 'info' } = process.env;
 const DEFAULT_CONFIG = {
   installLayers: true,
   exportLayers: true,
+  bulkInstall: false,
   upgradeLayerReferences: true,
   exportPrefix: '${AWS::StackName}-',
   manageNodeFolder: false,
@@ -77,6 +78,7 @@ export default class LayerManagerPlugin {
   };
   config: {
     installLayers?: boolean;
+    bulkInstall?: boolean;
     exportLayers?: boolean;
     upgradeLayerReferences?: boolean;
     exportPrefix?: string;
@@ -157,7 +159,7 @@ export default class LayerManagerPlugin {
   }
 
   async installLayers(sls: Serverless): Promise<{ installedLayers: Layer[] }> {
-    const { installLayers } = this.config;
+    const { installLayers, bulkInstall = false } = this.config;
 
     if (!installLayers) {
       verbose(this, `Skipping installation of layers as per config`);
@@ -165,16 +167,27 @@ export default class LayerManagerPlugin {
     }
 
     const layers = getLayers(sls);
-    const attemptedInstallLayers = await Promise.all(
-      Object.entries(layers).map(async ([layerName, layer]) => {
-        if (typeof layer !== 'object') return;
+    let installedLayers: Layer[] = [];
+    if (bulkInstall) {
+      const attemptedInstallLayers = await Promise.all(
+        Object.entries(layers).map(async ([layerName, layer]) => {
+          if (typeof layer !== 'object') return;
+          const installed = await this.installLayer(sls, layer, layerName);
+          if (!installed) return;
+          await this.delete(sls, layer.path);
+          return layer;
+        })
+      );
+      installedLayers = attemptedInstallLayers.filter(notEmpty);
+    } else {
+      for (const [layerName, layer] of Object.entries(layers)) {
+        if (typeof layer !== 'object') continue;
         const installed = await this.installLayer(sls, layer, layerName);
-        if (!installed) return;
+        if (!installed) continue;
         await this.delete(sls, layer.path);
-        return layer;
-      })
-    );
-    const installedLayers = attemptedInstallLayers.filter(notEmpty);
+        installedLayers.push(layer);
+      }
+    }
 
     info(this, `Installed ${installedLayers.length} layer${installedLayers.length > 1 ? 's' : ''}`);
     return { installedLayers };
