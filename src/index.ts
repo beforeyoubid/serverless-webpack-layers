@@ -213,7 +213,7 @@ export default class LayerManagerPlugin {
       mangle: true,
       packagejson: true,
     });
-    await info(this, `Cleaned ${filesDeleted.length} files at ${nodeLayerPath}`);
+    info(this, `Cleaned ${filesDeleted.length} files at ${nodeLayerPath}`);
   }
 
   async transformLayerResources(sls: Serverless): Promise<TransformedLayerResources> {
