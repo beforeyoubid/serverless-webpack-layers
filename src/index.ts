@@ -8,6 +8,7 @@ import { getExternalModules } from './external';
 import { Maybe, Layer, FunctionLayerReference, TransformedLayerResources, notEmpty } from './types';
 import Serverless from 'serverless';
 import { CloudFormationResource, Output } from 'serverless/aws';
+import minifyAll from 'minify-all-js';
 
 const exec = util.promisify(
   (
@@ -155,6 +156,9 @@ export default class LayerManagerPlugin {
       cwd: nodeLayerPath,
       encoding: null,
     });
+    if (this.config.packager === 'yarn') {
+      await exec(`yarn autoclean --init`, { cwd: nodeLayerPath, encoding: null });
+    }
     return true;
   }
 
@@ -201,9 +205,15 @@ export default class LayerManagerPlugin {
       sls.service?.package?.exclude ??
       sls.service?.package?.patterns?.filter(p => p.startsWith('!'))?.map(p => p.replace(/^!/, '')) ??
       [];
-    console.log(`Cleaning ${exclude.map(rule => path.join(nodeLayerPath, rule)).join(', ')}`);
+    info(this, `Cleaning ${exclude.map(rule => path.join(nodeLayerPath, rule)).join(', ')}`);
     const filesDeleted = await del(exclude.map(rule => path.join(nodeLayerPath, rule)));
-    info(this, `Cleaned ${filesDeleted.length} files at ${nodeLayerPath}`);
+    await minifyAll(nodeLayerPath, {
+      compress_json: true,
+      module: true,
+      mangle: true,
+      packagejson: true,
+    });
+    await info(this, `Cleaned ${filesDeleted.length} files at ${nodeLayerPath}`);
   }
 
   async transformLayerResources(sls: Serverless): Promise<TransformedLayerResources> {
