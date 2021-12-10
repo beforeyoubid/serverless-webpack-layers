@@ -1,6 +1,6 @@
 {
   "name": "serverless-webpack-layers",
-  "version": "2.0.2",
+  "version": "2.0.3",
   "description": "Plugin for the Serverless framework that offers AWS Lambda layer management using webpack",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -59,6 +59,7 @@
     "glob": "^7.1.6",
     "is-builtin-module": "^3.1.0",
     "lodash.merge": "^4.6.2",
+    "minify-all-js": "^0.1.7",
     "pascalcase": "^1.0.0",
     "webpack": "5.65.0"
   },
