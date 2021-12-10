@@ -180,9 +180,11 @@ export default class LayerManagerPlugin {
     const { clean } = this.config.webpack;
     if (!clean) return;
     const nodeLayerPath = `${folder}/nodejs`;
-    const exclude: string[] = sls.service?.package?.exclude || [];
+    const exclude: string[] =
+      sls.service?.package?.exclude ?? sls.service?.package?.patterns?.filter(p => p.startsWith('!')) ?? [];
     console.log(`Cleaning ${exclude.map(rule => path.join(nodeLayerPath, rule)).join(', ')}`);
-    await del(exclude.map(rule => path.join(nodeLayerPath, rule)));
+    const filesDeleted = await del(exclude.map(rule => path.join(nodeLayerPath, rule)));
+    info(this, `Cleaned ${filesDeleted.length} files at ${nodeLayerPath}`);
   }
 
   async transformLayerResources(sls: Serverless): Promise<TransformedLayerResources> {
