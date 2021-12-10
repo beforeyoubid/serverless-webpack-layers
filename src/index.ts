@@ -181,7 +181,9 @@ export default class LayerManagerPlugin {
     if (!clean) return;
     const nodeLayerPath = `${folder}/nodejs`;
     const exclude: string[] =
-      sls.service?.package?.exclude ?? sls.service?.package?.patterns?.filter(p => p.startsWith('!')) ?? [];
+      sls.service?.package?.exclude ??
+      sls.service?.package?.patterns?.filter(p => p.startsWith('!'))?.map(p => p.replace(/^!/, '')) ??
+      [];
     console.log(`Cleaning ${exclude.map(rule => path.join(nodeLayerPath, rule)).join(', ')}`);
     const filesDeleted = await del(exclude.map(rule => path.join(nodeLayerPath, rule)));
     info(this, `Cleaned ${filesDeleted.length} files at ${nodeLayerPath}`);
