@@ -4,6 +4,7 @@ const DEFAULT_CONFIG = {
   exportLayers: true,
   exportPrefix: '${AWS::StackName}-',
   installLayers: true,
+  bulkInstall: false,
   upgradeLayerReferences: true,
   manageNodeFolder: false,
   packager: 'npm',
@@ -112,6 +113,7 @@ describe(`Plugin tests`, () => {
       exportLayers: false,
       exportPrefix: 'PREFIX',
       installLayers: false,
+      bulkInstall: false,
     };
 
     const plugin = createPlugin(createSls(config));

@@ -207,12 +207,14 @@ export default class LayerManagerPlugin {
       [];
     info(this, `Cleaning ${exclude.map(rule => path.join(nodeLayerPath, rule)).join(', ')}`);
     const filesDeleted = await del(exclude.map(rule => path.join(nodeLayerPath, rule)));
-    await minifyAll(nodeLayerPath, {
-      compress_json: true,
-      module: true,
-      mangle: true,
-      packagejson: true,
-    });
+    if (fs.existsSync(nodeLayerPath)) {
+      await minifyAll(nodeLayerPath, {
+        compress_json: true,
+        module: true,
+        mangle: true,
+        packagejson: true,
+      });
+    }
     info(this, `Cleaned ${filesDeleted.length} files at ${nodeLayerPath}`);
   }
 
