@@ -1,4 +1,5 @@
-import { execSync } from 'child_process';
+import { exec as execNonPromise, ExecOptions, ExecException } from 'child_process';
+import util from 'util';
 import pascalcase from 'pascalcase';
 import fs from 'fs';
 import path from 'path';
@@ -7,6 +8,16 @@ import { getExternalModules } from './external';
 import { Maybe, Layer, FunctionLayerReference, TransformedLayerResources } from './types';
 import Serverless from 'serverless';
 import { CloudFormationResource, Output } from 'serverless/aws';
+
+const exec = util.promisify(
+  (
+    command: string,
+    options: {
+      encoding: 'buffer' | null;
+    } & ExecOptions,
+    callback: (error: ExecException | null, stdout: Buffer, stderr: Buffer) => void
+  ) => execNonPromise(command, options, callback)
+);
 
 const { LOG_LEVEL = 'info' } = process.env;
 
@@ -138,9 +149,9 @@ export default class LayerManagerPlugin {
       }
     }
     info(this, `Running command ${command}`);
-    execSync(command, {
-      stdio: 'inherit',
+    await exec(command, {
       cwd: nodeLayerPath,
+      encoding: null,
     });
     return true;
   }
