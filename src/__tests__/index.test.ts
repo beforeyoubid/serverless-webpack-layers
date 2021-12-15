@@ -10,6 +10,7 @@ const DEFAULT_CONFIG = {
   packager: 'npm',
   webpack: {
     clean: true,
+    minify: false,
     backupFileType: 'js',
     configPath: './webpack.config.js',
     discoverModules: true,
