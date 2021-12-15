@@ -32,6 +32,7 @@ const DEFAULT_CONFIG = {
   packager: 'npm',
   webpack: {
     clean: true,
+    minify: false,
     backupFileType: 'js',
     configPath: './webpack.config.js',
     discoverModules: true,
@@ -87,6 +88,7 @@ export default class LayerManagerPlugin {
     packager?: 'npm' | 'yarn';
     webpack: Partial<{
       clean: boolean;
+      minify: boolean;
       backupFileType: 'js' | 'ts' | 'cjs';
       configPath: string;
       discoverModules: boolean;
@@ -198,7 +200,7 @@ export default class LayerManagerPlugin {
   }
 
   async delete(sls: Serverless, folder: string): Promise<void> {
-    const { clean } = this.config.webpack;
+    const { clean, minify } = this.config.webpack;
     if (!clean) return;
     const nodeLayerPath = `${folder}/nodejs`;
     const exclude: string[] =
@@ -207,7 +209,7 @@ export default class LayerManagerPlugin {
       [];
     info(this, `Cleaning ${exclude.map(rule => path.join(nodeLayerPath, rule)).join(', ')}`);
     const filesDeleted = await del(exclude.map(rule => path.join(nodeLayerPath, rule)));
-    if (fs.existsSync(nodeLayerPath)) {
+    if (fs.existsSync(nodeLayerPath) && minify) {
       await minifyAll(nodeLayerPath, {
         compress_json: true,
         module: true,
