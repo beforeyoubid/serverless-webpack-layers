@@ -28,6 +28,7 @@ const DEFAULT_CONFIG = {
   exportPrefix: '${AWS::StackName}-',
   manageNodeFolder: false,
   packager: 'npm',
+  resolutions: {},
   webpack: {
     clean: true,
     backupFileType: 'js',
@@ -89,6 +90,7 @@ export default class LayerManagerPlugin {
     exportPrefix?: string;
     manageNodeFolder?: boolean;
     packager?: 'npm' | 'yarn';
+    resolutions?: Record<string, string>;
     webpack: Partial<{
       clean: boolean;
       backupFileType: 'js' | 'ts' | 'cjs';
@@ -151,6 +153,25 @@ export default class LayerManagerPlugin {
             : `${productionModeFlag} yarn add ${packages.join(' ')}`;
       } else {
         command = 'ls';
+      }
+    }
+    if (this.config.packager === 'yarn' && this.config.resolutions && Object.keys(this.config.resolutions).length > 0) {
+      info(this, `Adding resolutions to layer ${layerRefName}`);
+      verbose(
+        this,
+        `Adding resolutions: ${Object.entries(this.config.resolutions)
+          .map(([name, version]) => `${name}@${version}`)
+          .join(' ')}`
+      );
+      try {
+        const jsonString = await fs.promises.readFile(packageJsonPath, {
+          encoding: 'utf-8',
+        });
+        const json = JSON.parse(jsonString);
+        json['resolutions'] = this.config.resolutions;
+        await fs.promises.writeFile(packageJsonPath, JSON.stringify(json));
+      } catch (e) {
+        console.error(`Unable to add resolutions`, e);
       }
     }
     info(this, `Running command ${command}`);
