@@ -67,7 +67,14 @@ function getLayers(serverless: Serverless): { [key: string]: Layer } {
 function getConfig(serverless: Serverless) {
   const custom = serverless.service.custom || {};
 
-  return { ...DEFAULT_CONFIG, ...custom.layerConfig };
+  return {
+    ...DEFAULT_CONFIG,
+    ...custom.layerConfig,
+    webpack: {
+      ...DEFAULT_CONFIG.webpack,
+      ...(custom.layerConfig.webpack ?? {}),
+    },
+  };
 }
 
 export default class LayerManagerPlugin {
