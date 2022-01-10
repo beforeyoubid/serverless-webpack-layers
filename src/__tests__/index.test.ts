@@ -8,6 +8,7 @@ const DEFAULT_CONFIG = {
   upgradeLayerReferences: true,
   manageNodeFolder: false,
   packager: 'npm',
+  resolutions: {},
   webpack: {
     clean: true,
     minify: false,
