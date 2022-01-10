@@ -30,6 +30,7 @@ const DEFAULT_CONFIG = {
   exportPrefix: '${AWS::StackName}-',
   manageNodeFolder: false,
   packager: 'npm',
+  resolutions: {},
   webpack: {
     clean: true,
     minify: false,
@@ -70,7 +71,14 @@ function getLayers(serverless: Serverless): { [key: string]: Layer } {
 function getConfig(serverless: Serverless) {
   const custom = serverless.service.custom || {};
 
-  return { ...DEFAULT_CONFIG, ...custom.layerConfig };
+  return {
+    ...DEFAULT_CONFIG,
+    ...custom.layerConfig,
+    webpack: {
+      ...DEFAULT_CONFIG.webpack,
+      ...(custom.layerConfig.webpack ?? {}),
+    },
+  };
 }
 
 export default class LayerManagerPlugin {
@@ -86,6 +94,7 @@ export default class LayerManagerPlugin {
     exportPrefix?: string;
     manageNodeFolder?: boolean;
     packager?: 'npm' | 'yarn';
+    resolutions?: Record<string, string>;
     webpack: Partial<{
       clean: boolean;
       minify: boolean;
@@ -116,6 +125,7 @@ export default class LayerManagerPlugin {
     const { path: localPath } = layer;
     const layerRefName = `${layerName.replace(/^./, x => x.toUpperCase())}LambdaLayer`;
     const nodeLayerPath = `${localPath}/nodejs`;
+    const packageJsonPath = path.join(nodeLayerPath, 'package.json');
     if (!this.config.manageNodeFolder && !fs.existsSync(nodeLayerPath)) {
       return false;
     }
@@ -127,7 +137,7 @@ export default class LayerManagerPlugin {
       await fs.promises.mkdir(nodeLayerPath, { recursive: true });
     }
     if (!this.config.webpack) {
-      await fs.promises.copyFile(path.join(process.cwd(), 'package.json'), path.join(nodeLayerPath, 'package.json'));
+      await fs.promises.copyFile(path.join(process.cwd(), 'package.json'), packageJsonPath);
       if (this.config.packager === 'npm') {
         await fs.promises.copyFile(
           path.join(process.cwd(), 'package-lock.json'),
@@ -137,7 +147,7 @@ export default class LayerManagerPlugin {
         await fs.promises.copyFile(path.join(process.cwd(), 'yarn.lock'), path.join(nodeLayerPath, 'yarn.lock'));
       }
     } else if (this.config.manageNodeFolder) {
-      await fs.promises.writeFile(path.join(nodeLayerPath, 'package.json'), '{}');
+      await fs.promises.writeFile(packageJsonPath, '{}');
     }
     verbose(this, `Installing nodejs layer ${localPath} with ${this.config.packager}`);
     const productionModeFlag = this.config.productionMode ? 'NODE_ENV=production' : '';
@@ -154,6 +164,18 @@ export default class LayerManagerPlugin {
       }
     }
     info(this, `Running command ${command}`);
+    if (this.config.packager === 'yarn' && Object.keys(this.config.resolutions ?? {}).length > 0) {
+      try {
+        const jsonString = await fs.promises.readFile(packageJsonPath, {
+          encoding: 'utf-8',
+        });
+        const json = JSON.parse(jsonString);
+        json['resolutions'] = this.config.resolutions;
+        await fs.promises.writeFile(packageJsonPath, JSON.stringify(json));
+      } catch (e) {
+        console.error(`Unable to add resolutions`, e);
+      }
+    }
     await exec(command, {
       cwd: nodeLayerPath,
       encoding: null,
