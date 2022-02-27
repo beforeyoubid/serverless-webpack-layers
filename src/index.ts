@@ -52,15 +52,15 @@ function log(...s: unknown[]) {
   console.log('[webpack-layers]', ...s);
 }
 
-function verbose({ level }, ...s: unknown[]) {
+function verbose({ level }: { level: keyof typeof LEVELS }, ...s: unknown[]) {
   LEVELS[level] >= LEVELS.verbose && log(...s);
 }
 
-function info({ level }, ...s: unknown[]) {
+function info({ level }: { level: keyof typeof LEVELS }, ...s: unknown[]) {
   LEVELS[level] >= LEVELS.info && log(...s);
 }
 
-function debug({ level }, ...s: unknown[]) {
+function debug({ level }: { level: keyof typeof LEVELS }, ...s: unknown[]) {
   LEVELS[level] >= LEVELS.debug && log(...s);
 }
 
@@ -82,7 +82,7 @@ function getConfig(serverless: Serverless) {
 }
 
 export default class LayerManagerPlugin {
-  level: string;
+  level: keyof typeof LEVELS;
   hooks: {
     [key: string]: () => Promise<unknown>;
   };
@@ -105,7 +105,7 @@ export default class LayerManagerPlugin {
     productionMode?: boolean;
   } = { webpack: {} };
   constructor(sls: Serverless, options: Record<string, unknown> = {}) {
-    this.level = options.v || options.verbose ? 'verbose' : LOG_LEVEL;
+    this.level = (options.v || options.verbose ? 'verbose' : LOG_LEVEL) as keyof typeof LEVELS;
 
     debug(this, `Invoking webpack-layers plugin`);
     this.init(sls);
@@ -227,7 +227,9 @@ export default class LayerManagerPlugin {
     const nodeLayerPath = `${folder}/nodejs`;
     const exclude: string[] =
       sls.service?.package?.exclude ??
-      sls.service?.package?.patterns?.filter(p => p.startsWith('!'))?.map(p => p.replace(/^!/, '')) ??
+      sls.service?.package?.patterns
+        ?.filter((p: string) => p.startsWith('!'))
+        .map((p: string) => p.replace(/^!/, '')) ??
       [];
     info(this, `Cleaning ${exclude.map(rule => path.join(nodeLayerPath, rule)).join(', ')}`);
     const filesDeleted = await del(exclude.map(rule => path.join(nodeLayerPath, rule)));
