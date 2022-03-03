@@ -8,6 +8,8 @@ import isBuiltinModule from 'is-builtin-module';
 import { Stats, Module } from 'webpack';
 import { isFunctionDefinition, Maybe } from './types';
 
+declare const global: CustomGlobal;
+
 global['PACKAGING_LABELS'] = true;
 
 const compile = (file: webpack.Configuration): Promise<Maybe<Stats>> =>
@@ -83,7 +85,7 @@ async function findEntriesSpecified(specifiedEntries: string | string[]) {
 }
 
 async function resolvedEntries(sls: Serverless, layerRefName: string) {
-  const newEntries = {};
+  const newEntries: Record<string, string> = {};
   const backupFileType =
     sls.service.custom.layerConfig.backupFileType ?? sls.service.custom.layerConfig.webpack.backupFileType ?? 'default';
   for (const func of Object.values(sls.service.functions)) {
