@@ -115,6 +115,25 @@ async function resolvedEntries(sls: Serverless, layerRefName: string) {
   }
   return newEntries;
 }
+function getForceModulesFromLayer(sls: Serverless, layerRefName: string) {
+  let forceIncludeAll: string[] = [];
+  let forceExcludeAll: string[] = [];
+  const layer = sls.service.layers[layerRefName.replace(/LambdaLayer$/, '').toLocaleLowerCase()];
+  if (!layer) {
+    return {
+      forceInclude: forceIncludeAll,
+      forceExclude: forceExcludeAll,
+    };
+  }
+  const { forceInclude = [], forceExclude = [] } = layer;
+  forceIncludeAll = forceIncludeAll.concat(forceInclude);
+  forceExcludeAll = forceIncludeAll.concat(forceExclude);
+  return {
+    forceInclude: forceIncludeAll,
+    forceExclude: forceExcludeAll,
+  };
+}
+
 function getForceModulesFromFunctions(sls: Serverless, layerRefName: string) {
   let forceIncludeAll: string[] = [];
   let forceExcludeAll: string[] = [];
@@ -163,6 +182,10 @@ export async function getExternalModules(sls: Serverless, layerRefName: string):
     }
     const { forceInclude: forceIncludeFunction = [], forceExclude: forceExcludeFunction = [] } =
       getForceModulesFromFunctions(sls, layerRefName);
+    const { forceInclude: forceIncludeLayer = [], forceExclude: forceExcludeLayer = [] } = getForceModulesFromLayer(
+      sls,
+      layerRefName
+    );
     config.entry = await resolvedEntries(sls, layerRefName);
     const packageJson = await require(path.join(runPath, 'package.json'));
     let moduleNames: Set<string> = new Set();
@@ -170,8 +193,14 @@ export async function getExternalModules(sls: Serverless, layerRefName: string):
       const stats = await compile(config);
       moduleNames = new Set(getExternalModulesFromStats(stats));
     }
-    forceInclude.concat(forceIncludeFunction).forEach(forceIncludedModule => moduleNames.add(forceIncludedModule));
-    forceExclude.concat(forceExcludeFunction).forEach(forceExcludedModule => moduleNames.delete(forceExcludedModule));
+    forceInclude
+      .concat(forceIncludeFunction)
+      .concat(forceIncludeLayer)
+      .forEach(forceIncludedModule => moduleNames.add(forceIncludedModule));
+    forceExclude
+      .concat(forceExcludeFunction)
+      .concat(forceExcludeLayer)
+      .forEach(forceExcludedModule => moduleNames.delete(forceExcludedModule));
     return Array.from(moduleNames).map(name =>
       packageJson.dependencies[name] || packageJson.devDependencies[name]
         ? `${name}@${packageJson.dependencies[name] || packageJson.devDependencies[name]}`
