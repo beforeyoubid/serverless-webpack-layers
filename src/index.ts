@@ -152,6 +152,7 @@ export default class LayerManagerPlugin {
     verbose(this, `Installing nodejs layer ${localPath} with ${this.config.packager}`);
     const productionModeFlag = this.config.productionMode ? 'NODE_ENV=production' : '';
     let command = productionModeFlag + this.config.packager === 'npm' ? 'npm install' : 'yarn install';
+    let installingPackages = false;
     if (this.config.webpack) {
       const packages = await getExternalModules(sls, layerRefName);
       if (packages.length !== 0) {
@@ -159,6 +160,7 @@ export default class LayerManagerPlugin {
           this.config.packager === 'npm'
             ? `${productionModeFlag} npm install ${packages.join(' ').trim()}`
             : `${productionModeFlag} yarn add ${packages.join(' ').trim()}`;
+        installingPackages = true;
       } else {
         command = 'ls';
       }
@@ -180,7 +182,7 @@ export default class LayerManagerPlugin {
       cwd: nodeLayerPath,
       encoding: null,
     });
-    if (this.config.packager === 'yarn') {
+    if (this.config.packager === 'yarn' && installingPackages) {
       await exec(`yarn autoclean --init`, { cwd: nodeLayerPath, encoding: null });
     }
     return true;
