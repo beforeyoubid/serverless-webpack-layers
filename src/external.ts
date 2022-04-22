@@ -14,7 +14,7 @@ global['PACKAGING_LABELS'] = true;
 
 const compile = (file: webpack.Configuration): Promise<Maybe<Stats>> =>
   new Promise((resolve, reject) =>
-    webpack(file).run((err?: Error, stats?: Stats) => (err ? reject(err) : resolve(stats)))
+    webpack(file).run((err?: Maybe<Error>, stats?: Stats) => (err ? reject(err) : resolve(stats)))
   );
 
 const defaultWebpackConfig = {

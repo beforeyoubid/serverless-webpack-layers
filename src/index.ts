@@ -118,7 +118,6 @@ export default class LayerManagerPlugin {
 
   init(sls: Serverless): void {
     this.config = getConfig(sls);
-    verbose(this, `Config: `, this.config);
   }
 
   async installLayer(sls: Serverless, layer: Layer, layerName: string): Promise<boolean> {
@@ -189,6 +188,7 @@ export default class LayerManagerPlugin {
   }
 
   async installLayers(sls: Serverless): Promise<{ installedLayers: Layer[] }> {
+    verbose(this, `Config: `, this.config);
     const { installLayers, bulkInstall = false } = this.config;
 
     if (!installLayers) {
