@@ -149,7 +149,10 @@ export default class LayerManagerPlugin {
       await fs.promises.writeFile(packageJsonPath, '{}');
     }
     verbose(this, `Installing nodejs layer ${localPath} with ${this.config.packager}`);
-    const productionModeFlag = this.config.productionMode ? 'NODE_ENV=production' : '';
+
+    const productionModeFlagEnvironmentAgnostic =
+      process.platform === 'win32' ? 'set NODE_ENV=production &&' : 'NODE_ENV=production';
+    const productionModeFlag = this.config.productionMode ? productionModeFlagEnvironmentAgnostic : '';
     let command = productionModeFlag + this.config.packager === 'npm' ? 'npm install' : 'yarn install';
     let installingPackages = false;
     if (this.config.webpack) {
