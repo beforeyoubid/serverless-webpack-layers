@@ -1,0 +1,25 @@
+version: '2'
+checks:
+  file-lines:
+    config:
+      threshold: 500
+  method-complexity:
+    config:
+      threshold: 50
+  method-lines:
+    config:
+      threshold: 100
+  return-statements:
+    enabled: true
+    config:
+      threshold: 10
+exclude_patterns:
+  - '**/__tests__/'
+plugins:
+  nodesecurity:
+    enabled: true
+  eslint:
+    enabled: true
+    channel: 'eslint-7'
+    config:
+      config: .eslintrc
