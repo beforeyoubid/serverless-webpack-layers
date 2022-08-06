@@ -1,7 +1,7 @@
 defaults: &defaults
   working_directory: ~/app/
   docker:
-    - image: circleci/node:12
+    - image: cimg/node:14.19
   resource_class: medium
 
 version: 2.1
@@ -12,7 +12,13 @@ jobs:
       - checkout
       - restore_cache:
           key: node_modules-{{ checksum "yarn.lock" }}
+      - run:
+          name: Setup Code Climate test-reporter
+          command: |
+            curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter
+            chmod +x ./cc-test-reporter
       - run: NODE_ENV=development yarn
+      - run: mkdir -p ./reports/jest/ ; true
       - run:
           name: Tests
           command: yarn test --reporters=jest-junit
@@ -20,6 +26,11 @@ jobs:
             JEST_JUNIT_OUTPUT_DIR: ./reports/jest/
       - store_test_results:
           path: ./reports/jest/
+      - run:
+          name: Upload to CodeClimate
+          command: |
+            ./cc-test-reporter format-coverage -t=clover coverage/clover.xml
+            ./cc-test-reporter upload-coverage
       - save_cache:
           key: node_modules-{{ checksum "yarn.lock" }}
           paths:
@@ -73,9 +84,35 @@ jobs:
       - restore_cache:
           key: node_modules-{{ checksum "yarn.lock" }}
       - run: NODE_ENV=development yarn
+      - run: yarn build-and-publish-dryrun
+      - run: npm i -g verdaccio
       - run:
-          name: Publish dry run
-          command: npm publish --dry-run
+          name: Wait for Verdaccio to start
+          command: |
+            cd module_test
+            verdaccio --config verdaccio_config.yaml
+          background: true
+      - run: npm run build-and-publish-dryrun-ci
+      - run:
+          name: Test module install
+          command: |
+            cd module_test
+            yarn install --registry http://localhost:4873
+      - run:
+          name: Test ts-loader layer install
+          command: |
+            cd module_test
+            yarn install --registry http://localhost:4873
+            yarn sls package --stage=ts-loader
+            yarn test:ts-loader
+      - run:
+          name: Test ts-loader layer install
+          command: |
+            cd module_test
+            yarn install --registry http://localhost:4873
+            sudo rm -rf artifacts
+            yarn sls package --stage=swc
+            yarn test:swc
       - save_cache:
           key: node_modules-{{ checksum "yarn.lock" }}
           paths:

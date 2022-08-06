@@ -1,0 +1,23 @@
+{
+  "dependencies": {
+    "serverless-webpack-layers": "*"
+  },
+  "publishConfig": {
+    "registry": "http://localhost:4873"
+  },
+  "scripts": {
+    "test": "cd artifacts && unzip -q -o lib.zip && cat ./nodejs/package.json | grep lodash"
+  },
+  "devDependencies": {
+    "@swc/core": "^1.2.223",
+    "@types/aws-lambda": "^8.10.101",
+    "@types/node": "^18.6.4",
+    "aws-lambda": "^1.0.7",
+    "serverless": "^3.21.0",
+    "serverless-webpack": "^5.8.0",
+    "swc-loader": "^0.2.3",
+    "ts-loader": "^9.3.1",
+    "webpack-merge": "^5.8.0",
+    "webpack-node-externals": "^3.0.0"
+  }
+}

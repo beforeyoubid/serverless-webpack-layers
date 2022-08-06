@@ -2,3 +2,4 @@ examples
 node_modules
 dist
 coverage
+module_test/webpack/*

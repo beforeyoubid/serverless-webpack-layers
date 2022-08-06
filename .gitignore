@@ -63,3 +63,13 @@ typings/
 .next
 
 package-lock.json
+
+# JUNIT coverage file
+junit.xml
+
+cc-test-reporter
+
+module_test/storage
+module_test/yarn.lock
+module_test/.serverless
+module_test/artifacts
