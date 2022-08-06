@@ -1,7 +1,7 @@
 defaults: &defaults
   working_directory: ~/app/
   docker:
-    - image: circleci/node:12
+    - image: cimg/node:14.19
   resource_class: medium
 
 version: 2.1
