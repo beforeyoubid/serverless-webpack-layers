@@ -1,0 +1,43 @@
+service: example-layer-service
+provider:
+  name: aws
+  runtime: nodejs12.x
+  stage: ${opt:stage}
+
+plugins:
+  - serverless-webpack-layers
+  - serverless-webpack
+
+layers:
+  lib:
+    path: '.serverless'
+    name: layer-${self:provider.stage}
+    description: node_modules
+    compatibleRuntimes:
+      - nodejs14.x
+
+functions:
+  hello:
+    handler: handler.default
+    layers:
+      - {Ref: LibLambdaLayer}
+
+custom:
+  stages:
+    ts-loader:
+      webpackConfig: './webpack/config.modules.js'
+    swc:
+      webpackConfig: './webpack/config.modules-swc.js'
+  webpack:
+    packager: yarn
+    webpackConfig: './webpack/config.functions.js'
+    includeModules: false
+  layerConfig:
+    packager: yarn
+    manageNodeFolder: true
+    webpack:
+      configPath: ${self:custom.stages.${self:provider.stage}.webpackConfig}
+      backupFileType: ts
+
+package:
+  path: artifacts

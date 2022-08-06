@@ -84,9 +84,35 @@ jobs:
       - restore_cache:
           key: node_modules-{{ checksum "yarn.lock" }}
       - run: NODE_ENV=development yarn
+      - run: yarn build-and-publish-dryrun
+      - run: npm i -g verdaccio
       - run:
-          name: Publish dry run
-          command: npm publish --dry-run
+          name: Wait for Verdaccio to start
+          command: |
+            cd module_test
+            verdaccio --config verdaccio_config.yaml
+          background: true
+      - run: npm run build-and-publish-dryrun-ci
+      - run:
+          name: Test module install
+          command: |
+            cd module_test
+            yarn install --registry http://localhost:4873
+      - run:
+          name: Test ts-loader layer install
+          command: |
+            cd module_test
+            yarn install --registry http://localhost:4873
+            yarn sls package --stage=ts-loader
+            yarn test:ts-loader
+      - run:
+          name: Test ts-loader layer install
+          command: |
+            cd module_test
+            yarn install --registry http://localhost:4873
+            sudo rm -rf artifacts
+            yarn sls package --stage=swc
+            yarn test:swc
       - save_cache:
           key: node_modules-{{ checksum "yarn.lock" }}
           paths:
