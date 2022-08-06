@@ -1,0 +1,24 @@
+{
+  "[javascript]": {
+    "editor.formatOnSave": false
+  },
+  "editor.formatOnPaste": false,
+  "editor.tabSize": 2,
+  "editor.renderWhitespace": "all",
+  "extensions.ignoreRecommendations": false,
+  "emmet.triggerExpansionOnTab": true,
+  "editor.formatOnSave": true,
+  "eslint.alwaysShowStatus": true,
+  "javascript.updateImportsOnFileMove.enabled": "never",
+  "editor.snippetSuggestions": "bottom",
+  "eslint.validate": ["javascript", "javascriptreact", "typescript", "typescriptreact"],
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "editor.rulers": [120],
+  "workbench.colorCustomizations": {
+    "editorRuler.foreground": "#ff4081"
+  },
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": true
+  },
+  "files.eol": "\n"
+}
