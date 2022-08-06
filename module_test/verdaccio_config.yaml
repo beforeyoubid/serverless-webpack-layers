@@ -5,10 +5,7 @@ uplinks:
     url: https://registry.npmjs.org/
 
 packages:
-  '@*/*':
-    access: $all
-    publish: $anonymous
-    proxy: npmjs
   '**':
     access: $all
+    publish: $anonymous
     proxy: npmjs
