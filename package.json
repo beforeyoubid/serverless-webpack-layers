@@ -9,6 +9,8 @@
     "lint": "eslint '**/*.{ts,tsx,js,jsx}' --quiet",
     "ts": "tsc --noEmit",
     "build-and-publish": "npm run build && npm publish --access public",
+    "build-and-publish-dryrun": "npm run build && npm publish --dry-run",
+    "build-and-publish-dryrun-ci": "npm run build && npm publish --registry http://localhost:4873",
     "build": "npm run build:types && npm run build:js",
     "build:types": "tsc --emitDeclarationOnly",
     "build:js": "babel src/*.ts --out-dir dist --extensions \".ts,.tsx\" --source-maps inline"
