@@ -6,7 +6,7 @@
     "registry": "http://localhost:4873"
   },
   "scripts": {
-    "test": "cd artifacts && unzip -q -o lib.zip && cat ./nodejs/package.json | grep lodash"
+    "test": "cd .serverless && cat ./nodejs/package.json | grep lodash"
   },
   "devDependencies": {
     "@swc/core": "^1.2.223",
