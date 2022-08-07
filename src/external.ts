@@ -53,18 +53,18 @@ function getExternalModulesFromStats(stats: Maybe<Stats>): string[] {
     return [];
   }
   const externals: Set<string> = new Set();
+  const modules = new Set<Module>(stats.compilation.modules);
   for (const chunk of stats.compilation.chunks) {
-    const modules = stats.compilation.chunkGraph.getChunkModules(chunk);
+    stats.compilation.chunkGraph.getChunkModules(chunk).forEach(module => modules.add(module));
+  }
 
-    // Explore each module within the chunk (built inputs):
-    for (const module of modules) {
-      if (isExternalModule(module)) {
-        if (isBuiltinModule(getExternalModuleName(module))) continue;
-        const externalModuleName = getExternalModuleName(module);
-        if (externalModuleName === undefined) continue;
-        externals.add(externalModuleName);
-      }
-    }
+  // Explore each module within the chunk (built inputs):
+  for (const module of modules) {
+    if (!isExternalModule(module)) continue;
+    if (isBuiltinModule(getExternalModuleName(module))) continue;
+    const externalModuleName = getExternalModuleName(module);
+    if (externalModuleName === undefined) continue;
+    externals.add(externalModuleName);
   }
   return Array.from(externals);
 }
