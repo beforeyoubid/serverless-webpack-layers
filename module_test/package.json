@@ -16,7 +16,6 @@
     "serverless": "^3.21.0",
     "serverless-webpack": "^5.8.0",
     "swc-loader": "^0.2.3",
-    "timeout-cli": "^0.3.2",
     "ts-loader": "^9.3.1",
     "webpack-merge": "^5.8.0",
     "webpack-node-externals": "^3.0.0"
