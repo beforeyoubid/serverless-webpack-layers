@@ -138,7 +138,7 @@ export default class LayerManagerPlugin {
     }
     if (!this.config.webpack) {
       await fs.promises.copyFile(path.join(process.cwd(), 'package.json'), packageJsonPath);
-      let fileName = PACKAGER_LOCK_FILE_NAMES[this.config.packager ?? 'npm'];
+      const fileName = PACKAGER_LOCK_FILE_NAMES[this.config.packager ?? 'npm'];
       try {
         await fs.promises.copyFile(path.join(process.cwd(), fileName), path.join(nodeLayerPath, fileName));
       } catch {
