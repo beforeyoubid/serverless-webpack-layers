@@ -2,7 +2,7 @@ import Serverless from 'serverless';
 import { Output } from 'serverless/aws';
 
 export type Maybe<T> = null | undefined | T;
-export const notEmpty = <TValue>(value: Maybe<TValue>): value is TValue => value !== null && value !== undefined;
+
 export type Layer = {
   path: string;
   name: string;
@@ -19,10 +19,6 @@ export type FunctionWithConfig = Serverless.FunctionDefinitionHandler & {
   forceInclude?: string[];
   forceExclude?: string[];
 };
-
-export const isFunctionDefinition = (
-  value: Serverless.FunctionDefinitionHandler | Serverless.FunctionDefinitionImage
-): value is FunctionWithConfig => notEmpty(value) && Object.prototype.hasOwnProperty.call(value, 'handler');
 
 export type TransformedLayerResources = { exportedLayers: Output[]; upgradedLayerReferences: FunctionLayerReference[] };
 export type Packager = 'npm' | 'yarn' | 'pnpm';

@@ -6,7 +6,8 @@ import glob from 'glob';
 import Serverless from 'serverless';
 import isBuiltinModule from 'is-builtin-module';
 import { Stats, Module } from 'webpack';
-import { isFunctionDefinition, Maybe } from './types';
+import { Maybe } from './types';
+import { isFunctionDefinition } from './utils';
 
 declare const global: CustomGlobal;
 
