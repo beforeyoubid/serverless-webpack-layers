@@ -25,3 +25,4 @@ export const isFunctionDefinition = (
 ): value is FunctionWithConfig => notEmpty(value) && Object.prototype.hasOwnProperty.call(value, 'handler');
 
 export type TransformedLayerResources = { exportedLayers: Output[]; upgradedLayerReferences: FunctionLayerReference[] };
+export type Packager = 'npm' | 'yarn' | 'pnpm';

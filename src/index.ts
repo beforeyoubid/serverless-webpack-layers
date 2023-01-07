@@ -5,7 +5,8 @@ import fs from 'fs';
 import path from 'path';
 import del from 'del';
 import { getExternalModules } from './external';
-import { Maybe, Layer, FunctionLayerReference, TransformedLayerResources, notEmpty } from './types';
+import { Packager, Maybe, Layer, FunctionLayerReference, TransformedLayerResources, notEmpty } from './types';
+import { PACKAGER_ADD_COMMAND, PACKAGER_INSTALL_COMMAND, PACKAGER_LOCK_FILE_NAMES } from './constants';
 import Serverless from 'serverless';
 import { CloudFormationResource, Output } from 'serverless/aws';
 import minifyAll from 'minify-all-js';
@@ -93,7 +94,7 @@ export default class LayerManagerPlugin {
     upgradeLayerReferences?: boolean;
     exportPrefix?: string;
     manageNodeFolder?: boolean;
-    packager?: 'npm' | 'yarn';
+    packager?: Packager;
     resolutions?: Record<string, string>;
     webpack: Partial<{
       clean: boolean;
@@ -137,13 +138,11 @@ export default class LayerManagerPlugin {
     }
     if (!this.config.webpack) {
       await fs.promises.copyFile(path.join(process.cwd(), 'package.json'), packageJsonPath);
-      if (this.config.packager === 'npm') {
-        await fs.promises.copyFile(
-          path.join(process.cwd(), 'package-lock.json'),
-          path.join(nodeLayerPath, 'package-lock.json')
-        );
-      } else if (this.config.packager === 'yarn') {
-        await fs.promises.copyFile(path.join(process.cwd(), 'yarn.lock'), path.join(nodeLayerPath, 'yarn.lock'));
+      let fileName = PACKAGER_LOCK_FILE_NAMES[this.config.packager ?? 'npm'];
+      try {
+        await fs.promises.copyFile(path.join(process.cwd(), fileName), path.join(nodeLayerPath, fileName));
+      } catch {
+        info(this, `Unable to copy ${fileName} across, this will cause version inaccuracies`);
       }
     } else if (this.config.manageNodeFolder) {
       await fs.promises.writeFile(packageJsonPath, '{}');
@@ -153,15 +152,14 @@ export default class LayerManagerPlugin {
     const productionModeFlagEnvironmentAgnostic =
       process.platform === 'win32' ? 'set NODE_ENV=production &&' : 'NODE_ENV=production';
     const productionModeFlag = this.config.productionMode ? productionModeFlagEnvironmentAgnostic : '';
-    let command = productionModeFlag + this.config.packager === 'npm' ? 'npm install' : 'yarn install';
+    let command = productionModeFlag + PACKAGER_INSTALL_COMMAND[this.config.packager ?? 'npm'];
     let installingPackages = false;
     if (this.config.webpack) {
       const packages = await getExternalModules(sls, layerRefName);
       if (packages.length !== 0) {
-        command =
-          this.config.packager === 'npm'
-            ? `${productionModeFlag} npm install ${packages.join(' ').trim()}`
-            : `${productionModeFlag} yarn add ${packages.join(' ').trim()}`;
+        command = `${productionModeFlag} ${PACKAGER_ADD_COMMAND[this.config.packager ?? 'npm']} ${packages
+          .join(' ')
+          .trim()}`;
         installingPackages = true;
       } else {
         command = 'ls';
