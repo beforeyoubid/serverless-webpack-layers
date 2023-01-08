@@ -1,26 +1,14 @@
-import { exec as execNonPromise, ExecOptions, ExecException } from 'child_process';
-import util from 'util';
 import pascalcase from 'pascalcase';
 import fs from 'fs';
 import path from 'path';
 import del from 'del';
 import { getExternalModules } from './external';
 import { Packager, Maybe, Layer, FunctionLayerReference, TransformedLayerResources } from './types';
-import { notEmpty } from './utils';
+import { notEmpty, exec } from './utils';
 import { PACKAGER_ADD_COMMAND, PACKAGER_INSTALL_COMMAND, PACKAGER_LOCK_FILE_NAMES } from './constants';
 import Serverless from 'serverless';
 import { CloudFormationResource, Output } from 'serverless/aws';
 import minifyAll from 'minify-all-js';
-
-const exec = util.promisify(
-  (
-    command: string,
-    options: {
-      encoding: 'buffer' | null;
-    } & ExecOptions,
-    callback: (error: ExecException | null, stdout: Buffer, stderr: Buffer) => void
-  ) => execNonPromise(command, options, callback)
-);
 
 const { LOG_LEVEL = 'info' } = process.env;
 
