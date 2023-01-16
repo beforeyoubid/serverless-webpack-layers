@@ -61,7 +61,7 @@ You also will want to add a `layerConfig` property with the following properties
 ```yml
 custom:
   layerConfig:
-    packager: [yarn, npm] # defaults to npm
+    packager: [yarn, npm, pnpm] # defaults to npm
     manageNodeFolder: <boolean> # defaults to false, this lets the plugin control the existence of the layer's nodejs folder
     webpack:
       clean: true # this will clean and remove files/folders according to package.exclude
