@@ -1,6 +1,6 @@
 {
   "name": "serverless-webpack-layers",
-  "version": "2.0.9",
+  "version": "2.1.0",
   "description": "Plugin for the Serverless framework that offers AWS Lambda layer management using webpack",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -11,7 +11,7 @@
     "build-and-publish": "npm run build && npm publish --access public",
     "build-and-publish-dryrun": "npm run build && npm publish --dry-run",
     "build-and-publish-dryrun-ci": "npm run build && npm publish --registry http://localhost:4873",
-    "build": "npm run build:types && npm run build:js",
+    "build": "rimraf dist && npm run build:types && npm run build:js",
     "build:types": "tsc --emitDeclarationOnly",
     "build:js": "babel src/*.ts --out-dir dist --extensions \".ts,.tsx\" --source-maps inline"
   },
@@ -56,8 +56,10 @@
     "jest": "27.5.1",
     "jest-junit": "13.2.0",
     "prettier": "2.6.2",
+    "rimraf": "^4.0.7",
     "ts-node": "10.7.0",
-    "typescript": "4.6.3"
+    "typescript": "4.6.3",
+    "webpack-node-externals": "^3.0.0"
   },
   "dependencies": {
     "del": "6.0.0",
