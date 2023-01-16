@@ -1,4 +1,8 @@
 import LayerManagerPlugin from '..';
+import { PACKAGER_ADD_COMMAND } from '../constants';
+import { Packager } from '../types';
+
+import { exec } from '../utils';
 
 const DEFAULT_CONFIG = {
   exportLayers: true,
@@ -70,6 +74,7 @@ function createSls(layerConfig = {}) {
       },
       functions: {
         hello: {
+          handler: 'examples/example-layer-service/hello.default',
           layers: [
             {
               Ref: 'FooLambdaLayer',
@@ -89,6 +94,11 @@ function createSls(layerConfig = {}) {
   };
 }
 
+jest.mock('../utils', () => ({
+  ...jest.requireActual('../utils'),
+  exec: jest.fn(),
+}));
+
 class Plugin extends LayerManagerPlugin {
   // Mock the install method
   async installLayer() {
@@ -96,8 +106,15 @@ class Plugin extends LayerManagerPlugin {
   }
 }
 
-function createPlugin(sls, options = {}) {
+function createMockPlugin(sls, options = {}) {
   const plugin = new Plugin(sls, options);
+  plugin.init(sls);
+
+  return plugin;
+}
+
+function createPlugin(sls, options = {}) {
+  const plugin = new LayerManagerPlugin(sls, options);
   plugin.init(sls);
 
   return plugin;
@@ -105,7 +122,7 @@ function createPlugin(sls, options = {}) {
 
 describe(`Plugin tests`, () => {
   it(`should create plugin with default config successfully`, async () => {
-    const plugin = createPlugin(createSls());
+    const plugin = createMockPlugin(createSls());
 
     expect(plugin.config).toEqual(DEFAULT_CONFIG);
   });
@@ -118,7 +135,7 @@ describe(`Plugin tests`, () => {
       bulkInstall: false,
     };
 
-    const plugin = createPlugin(createSls(config));
+    const plugin = createMockPlugin(createSls(config));
 
     expect(plugin.config).toEqual({
       ...DEFAULT_CONFIG,
@@ -127,14 +144,14 @@ describe(`Plugin tests`, () => {
   });
 
   it('should set log level using -v or --verbose flag', () => {
-    expect(createPlugin(createSls()).level).not.toBe('verbose');
-    expect(createPlugin(createSls(), { v: true }).level).toBe('verbose');
-    expect(createPlugin(createSls(), { verbose: true }).level).toBe('verbose');
+    expect(createMockPlugin(createSls()).level).not.toBe('verbose');
+    expect(createMockPlugin(createSls(), { v: true }).level).toBe('verbose');
+    expect(createMockPlugin(createSls(), { verbose: true }).level).toBe('verbose');
   });
 
   it(`should install layers successfully`, async () => {
     const sls = createSls({ manageNodeFolder: true });
-    const plugin = createPlugin(sls);
+    const plugin = createMockPlugin(sls);
 
     const { installedLayers } = await plugin.installLayers(sls as any);
     expect(installedLayers).toHaveLength(2);
@@ -145,7 +162,7 @@ describe(`Plugin tests`, () => {
       exportLayers: true,
       upgradeLayerReferences: false,
     });
-    const plugin = createPlugin(sls);
+    const plugin = createMockPlugin(sls);
 
     const { exportedLayers, upgradedLayerReferences } = await plugin.transformLayerResources(sls as any);
     expect(exportedLayers).toHaveLength(2);
@@ -157,10 +174,33 @@ describe(`Plugin tests`, () => {
       exportLayers: false,
       upgradeLayerReferences: true,
     });
-    const plugin = createPlugin(sls);
+    const plugin = createMockPlugin(sls);
 
     const { exportedLayers, upgradedLayerReferences } = await plugin.transformLayerResources(sls as any);
     expect(exportedLayers).toHaveLength(0);
     expect(upgradedLayerReferences).toHaveLength(1);
   });
+});
+
+describe('plugin install', () => {
+  const packagers: Packager[] = ['npm', 'yarn', 'pnpm'];
+  for (const packager of packagers) {
+    it(`should install layers successfully - ${packager}`, async () => {
+      const sls = createSls({
+        manageNodeFolder: true,
+        webpack: {
+          ...DEFAULT_CONFIG.webpack,
+          configPath: './src/__tests__/webpack.config.js',
+        },
+        packager,
+      });
+      const plugin = createPlugin(sls);
+      const { installedLayers } = await plugin.installLayers(sls as any);
+      expect(exec).toHaveBeenCalledWith(`NODE_ENV=production ${PACKAGER_ADD_COMMAND[packager]} lodash`, {
+        cwd: 'Foo/nodejs',
+        encoding: null,
+      });
+      expect(installedLayers).toHaveLength(2);
+    });
+  }
 });
