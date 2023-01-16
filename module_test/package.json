@@ -1,6 +1,6 @@
 {
   "dependencies": {
-    "serverless-webpack-layers": "2.1.0-alpha.0"
+    "serverless-webpack-layers": "*"
   },
   "publishConfig": {
     "registry": "http://localhost:4873"
